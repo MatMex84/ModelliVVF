@@ -297,10 +297,11 @@ function makePDF(id){
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(0);
   doc.text('Il sottoscritto',ml,y);
   doc.setFont('helvetica','bold');
-  var nx=ml+22;doc.text(nome,nx,y);
-  doc.setLineWidth(0.2);doc.line(nx,y+0.8,pw-mr-30,y+0.8);
-  doc.setFont('helvetica','normal');doc.text('in relazione',pw-mr,y,{align:'right'});
+  var nx=ml+22;doc.text(nome,nx,y,{maxWidth:pw-mr-nx});
+  doc.setLineWidth(0.2);doc.line(nx,y+0.8,pw-mr,y+0.8);
   y+=9;
+
+  doc.setFont('helvetica','normal');doc.text('in relazione',ml,y);y+=9;
 
   doc.text("all'espletamento dell'intervento n°",ml,y);
   doc.setFont('helvetica','bold');
@@ -312,14 +313,18 @@ function makePDF(id){
   y+=9;
 
   doc.setFont('helvetica','normal');doc.text('effettuato a',ml,y);
-  doc.setFont('helvetica','bold');doc.text(row.luogo||'',ml+22,y);
-  doc.setLineWidth(0.2);doc.line(ml+22,y+0.8,ml+62,y+0.8);
-  doc.setFont('helvetica','normal');doc.text('dalle ore',ml+66,y);
-  doc.setFont('helvetica','bold');doc.text(row.dalleOra||'',ml+84,y);
-  doc.setLineWidth(0.2);doc.line(ml+84,y+0.8,ml+96,y+0.8);
-  doc.setFont('helvetica','normal');doc.text('del',ml+100,y);
-  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.dalleData)||'',ml+107,y);
-  doc.setLineWidth(0.2);doc.line(ml+107,y+0.8,pw-mr,y+0.8);
+  doc.setFont('helvetica','bold');
+  var eax=ml+doc.getTextWidth('effettuato a')+3;
+  doc.text(row.luogo||'',eax,y,{maxWidth:pw-mr-eax});
+  doc.setLineWidth(0.2);doc.line(eax,y+0.8,pw-mr,y+0.8);
+  y+=9;
+
+  doc.setFont('helvetica','normal');doc.text('dalle ore',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.dalleOra||'',ml+18,y);
+  doc.setLineWidth(0.2);doc.line(ml+18,y+0.8,ml+30,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('del',ml+34,y);
+  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.dalleData)||'',ml+41,y);
+  doc.setLineWidth(0.2);doc.line(ml+41,y+0.8,ml+68,y+0.8);
   y+=9;
 
   doc.setFont('helvetica','normal');doc.text('ore',ml,y);

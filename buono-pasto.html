@@ -307,7 +307,7 @@ function makePDF(id){
   doc.setFont('helvetica','normal');doc.setFontSize(10);
   doc.text('Con la presente il sottoscritto',ml,y);
   doc.setFont('helvetica','bold');
-  var nx=ml+58;doc.text(nome,nx,y);
+  var nx=ml+58;doc.text(nome,nx,y,{maxWidth:pw-mr-nx});
   doc.setLineWidth(0.2);doc.line(nx,y+0.8,pw-mr,y+0.8);
   y+=9;
   doc.setFont('helvetica','normal');
@@ -328,22 +328,39 @@ function makePDF(id){
   });
   y+=3;
 
-  doc.text('chiede il riconoscimento di un Buono Pasto Elettronico poiché in data',ml,y,{maxWidth:cw});
-  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.data)||'__________',pw-mr-24,y);
-  doc.setLineWidth(0.2);doc.line(pw-mr-24,y+0.8,pw-mr,y+0.8);
-  doc.setFont('helvetica','normal');doc.text('in missione',pw-mr-2,y,{align:'right'});
+  doc.text('chiede il riconoscimento di un Buono Pasto Elettronico poiché in missione',ml,y,{maxWidth:cw});
   y+=9;
 
-  doc.text('a',ml,y);
-  doc.setFont('helvetica','bold');doc.text(row.luogo||'',ml+6,y);
-  doc.setLineWidth(0.2);doc.line(ml+6,y+0.8,ml+92,y+0.8);
+  doc.text('in data',ml,y);
+  doc.setFont('helvetica','bold');
+  var dtx=ml+doc.getTextWidth('in data')+3;
+  var dtv=fmtDataIt(row.data)||'__________';
+  doc.text(dtv,dtx,y);
+  var dtw=Math.max(doc.getTextWidth(dtv),24);
+  doc.setLineWidth(0.2);doc.line(dtx,y+0.8,dtx+dtw,y+0.8);
+  y+=9;
+
   doc.setFont('helvetica','normal');
-  doc.text('dalle ore',ml+96,y);
-  doc.setFont('helvetica','bold');doc.text(row.dalle||'',ml+118,y);
-  doc.setLineWidth(0.2);doc.line(ml+118,y+0.8,ml+132,y+0.8);
-  doc.setFont('helvetica','normal');doc.text('alle ore',ml+136,y);
-  doc.setFont('helvetica','bold');doc.text(row.alle||'',ml+154,y);
-  doc.setLineWidth(0.2);doc.line(ml+154,y+0.8,pw-mr,y+0.8);
+  doc.text('a',ml,y);
+  doc.setFont('helvetica','bold');
+  var lox=ml+doc.getTextWidth('a')+3;
+  doc.text(row.luogo||'',lox,y,{maxWidth:pw-mr-lox});
+  doc.setLineWidth(0.2);doc.line(lox,y+0.8,pw-mr,y+0.8);
+  y+=11;
+
+  doc.setFont('helvetica','normal');
+  doc.text('dalle ore',ml,y);
+  doc.setFont('helvetica','bold');
+  var dax=ml+doc.getTextWidth('dalle ore')+3;
+  doc.text(row.dalle||'',dax,y);
+  doc.setLineWidth(0.2);doc.line(dax,y+0.8,dax+16,y+0.8);
+  doc.setFont('helvetica','normal');
+  var alx=dax+22;
+  doc.text('alle ore',alx,y);
+  doc.setFont('helvetica','bold');
+  var alvx=alx+doc.getTextWidth('alle ore')+3;
+  doc.text(row.alle||'',alvx,y);
+  doc.setLineWidth(0.2);doc.line(alvx,y+0.8,alvx+16,y+0.8);
   y+=11;
 
   doc.setFont('helvetica','normal');doc.text('per la seguente attività',ml,y);y+=7;
