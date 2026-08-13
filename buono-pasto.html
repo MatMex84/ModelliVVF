@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Buono Pasto">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C0272D">
+<title>Richiesta Buono Pasto — VVF</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="shared.css">
+<style>
+.sede-opt{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.sede-opt:last-child{border-bottom:none}
+.sede-opt input[type=radio]{width:19px;height:19px;accent-color:var(--red);flex-shrink:0}
+.sede-opt span{font-size:14px;font-weight:600;color:var(--ink)}
+.sede-altro-input{margin-top:8px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="overlay hidden" id="overlay"><div class="spin"></div><div class="spintxt" id="spintxt">Caricamento...</div></div>
+
+<div class="topbar">
+  <div class="topbar-main">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-back" onclick="location.href='index.html'" aria-label="Torna alla dashboard">&#8249;</button>
+      <div>
+        <h1>Richiesta Buono Pasto</h1>
+        <div class="sub" id="userSub">VV.F. Benevento</div>
+      </div>
+    </div>
+    <button class="btn-exit" onclick="doLogout()">Esci</button>
+  </div>
+  <div class="statusline">
+    <div class="sdot" id="cdot"></div>
+    <span id="clbl">...</span>
+    <span class="stime" id="ctime"></span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Profilo collassabile -->
+  <div class="profile open" id="profileCard">
+    <div class="profile-head" onclick="toggleProfile()">
+      <div>
+        <div class="pname" id="profName">Dati dipendente</div>
+        <div class="pmeta" id="profMeta">Tocca per compilare</div>
+      </div>
+      <span class="chev">&#9662;</span>
+    </div>
+    <div class="profile-body">
+      <div class="frow">
+        <div class="field" style="flex:2"><label>Cognome e Nome</label><input type="text" id="nome" placeholder="Messina Matteo" oninput="sched();updProfHead()"></div>
+        <div class="field"><label>Turno</label>
+          <select id="turno" onchange="sched();updProfHead()"><option value="">--</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        </div>
+      </div>
+      <div class="frow" style="margin-bottom:8px">
+        <div class="field"><label>Data documento</label><input type="text" id="dataDoc" placeholder="gg/mm/aaaa" oninput="sched()"></div>
+      </div>
+      <span class="lbl" style="margin-bottom:4px">Sede di servizio</span>
+      <div id="sedeList"></div>
+      <div class="sede-altro-input" id="sedeAltroWrap" style="display:none">
+        <input type="text" id="sedeAltro" placeholder="Specificare sede" oninput="sched();updProfHead()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Richieste -->
+  <div class="section-title">
+    <h2>Richieste</h2>
+    <span class="section-count" id="reqCount"></span>
+  </div>
+  <div id="rows"></div>
+  <button class="btn-add" onclick="addRow()">+ Nuova richiesta</button>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+var SEDI=['Sede Centrale','Distaccamento Bonea','Distaccamento Telese Terme','Distaccamento San Marco dei Cavoti','Altro'];
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+
+function renderSedeList(){
+  var sede=document.getElementById('sedeHidden')?document.getElementById('sedeHidden').value:'';
+  var c=document.getElementById('sedeList');c.innerHTML='';
+  SEDI.forEach(function(s){
+    var row=document.createElement('label');row.className='sede-opt';
+    var r=document.createElement('input');r.type='radio';r.name='sede';r.value=s;r.checked=(sede===s);
+    r.addEventListener('change',function(){
+      document.getElementById('sedeAltroWrap').style.display=(s==='Altro')?'block':'none';
+      sched();updProfHead();
+    });
+    var sp=document.createElement('span');sp.textContent=s;
+    row.appendChild(r);row.appendChild(sp);
+    c.appendChild(row);
+  });
+  document.getElementById('sedeAltroWrap').style.display=(sede==='Altro')?'block':'none';
+}
+function getSede(){
+  var el=document.querySelector('input[name=sede]:checked');
+  return el?el.value:'';
+}
+function setSede(v){
+  var els=document.querySelectorAll('input[name=sede]');
+  els.forEach(function(e){e.checked=(e.value===v);});
+  document.getElementById('sedeAltroWrap').style.display=(v==='Altro')?'block':'none';
+}
+
+function doLogout(){
+  if(!confirm('Uscire?'))return;
+  fbAuth.signOut().catch(function(){});
+  clearCreds();
+  window.location.href='index.html';
+}
+
+function afterAuth(user){
+  currentFile='u_'+user.uid;
+  document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  renderSedeList();
+  showOv('Caricamento dati...');
+  setDot('sync','Connessione...');
+  loadModuleData('buonoPasto').then(function(d){
+    if(d&&!d.init){applyData(d);setDot('ok','Sincronizzato');lastSaved=new Date();updTime(lastSaved);}
+    else{setDot('ok','Pronto');setDate();document.getElementById('profileCard').classList.add('open');addRow();}
+    hideOv();
+  }).catch(function(){
+    setDot('err','Offline — dati locali');
+    var bk=localStorage.getItem('vvf_bk_bp_'+currentFile);
+    if(bk){try{applyData(JSON.parse(bk));}catch(e){setDate();addRow();}}
+    else{setDate();addRow();}
+    hideOv();
+  });
+}
+
+function sched(){setDot('sync','Modificato...');clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,2000);}
+function saveNow(){
+  clearTimeout(saveTimer);
+  if(!fbAuth.currentUser){setDot('err','Non connesso');return;}
+  setDot('sync','Salvataggio...');
+  var d=getData();
+  localStorage.setItem('vvf_bk_bp_'+currentFile,JSON.stringify(d));
+  saveModuleData('buonoPasto',d).then(function(){lastSaved=new Date();setDot('ok','Salvato');updTime(lastSaved);})
+  .catch(function(){setDot('err','Offline — backup locale');});
+}
+
+function setDate(){document.getElementById('dataDoc').value=oggiIt();}
+
+function toggleProfile(){document.getElementById('profileCard').classList.toggle('open');}
+function updProfHead(){
+  var n=document.getElementById('nome').value;
+  var t=document.getElementById('turno').value;
+  var s=getSede();
+  document.getElementById('profName').textContent=n||'Dati dipendente';
+  var meta=[];if(t)meta.push('Turno '+t);if(s)meta.push(s==='Altro'?(document.getElementById('sedeAltro').value||'Altro'):s);
+  document.getElementById('profMeta').textContent=meta.length?meta.join(' · '):'Tocca per compilare';
+}
+
+function getData(){
+  return{
+    nome:document.getElementById('nome').value,
+    turno:document.getElementById('turno').value,
+    sede:getSede(),
+    sedeAltro:document.getElementById('sedeAltro').value,
+    dataDoc:document.getElementById('dataDoc').value,
+    richieste:rows
+  };
+}
+function applyData(d){
+  document.getElementById('nome').value=d.nome||'';
+  document.getElementById('turno').value=d.turno||'';
+  document.getElementById('sedeAltro').value=d.sedeAltro||'';
+  setSede(d.sede||'');
+  setDate();
+  rows=(d.richieste||[]).slice();
+  rc=rows.length?rows.reduce(function(m,r){return Math.max(m,r.id);},-1)+1:0;
+  renderRows();updProfHead();
+  if(d.nome) document.getElementById('profileCard').classList.remove('open');
+  else document.getElementById('profileCard').classList.add('open');
+}
+
+function addRow(){
+  rows.push({id:rc++,data:'',luogo:'',dalle:'',alle:'',attivita:'',targa:'',km:''});
+  renderRows();sched();
+  setTimeout(function(){var cards=document.querySelectorAll('.item-card');if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+function delRow(id){
+  rows=rows.filter(function(r){return r.id!==id;});
+  renderRows();sched();
+}
+function upd(id,f,v){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  row[f]=v;sched();
+}
+
+function renderRows(){
+  var c=document.getElementById('rows');c.innerHTML='';
+  document.getElementById('reqCount').textContent=rows.length?rows.length+(rows.length===1?' richiesta':' richieste'):'';
+  if(!rows.length){
+    var em=document.createElement('div');em.className='empty';
+    em.innerHTML='<div class="ic">&#127869;</div><p>Nessuna richiesta inserita.<br>Tocca "+ Nuova richiesta" per iniziare.</p>';
+    c.appendChild(em);return;
+  }
+  rows.forEach(function(row){
+    var card=document.createElement('div');card.className='item-card';
+
+    var top=document.createElement('div');top.className='item-top';top.style.marginBottom='12px';
+    var fd=document.createElement('div');fd.className='field';fd.style.flex='1';
+    var ld=document.createElement('label');ld.textContent='Data missione';
+    var idt=document.createElement('input');idt.type='date';idt.value=row.data||'';
+    idt.addEventListener('input',function(){upd(row.id,'data',idt.value);});
+    fd.appendChild(ld);fd.appendChild(idt);top.appendChild(fd);
+    var tr=document.createElement('button');tr.className='btn-trash';tr.type='button';tr.setAttribute('aria-label','Elimina richiesta');tr.textContent='✕';tr.style.marginTop='18px';
+    (function(rid){tr.addEventListener('click',function(){delRow(rid);});})(row.id);
+    top.appendChild(tr);
+    card.appendChild(top);
+
+    var r1=document.createElement('div');r1.className='frow';
+    var fl=document.createElement('div');fl.className='field';
+    var ll=document.createElement('label');ll.textContent='Luogo missione';
+    var il=document.createElement('input');il.type='text';il.placeholder='Destinazione missione';il.value=row.luogo||'';
+    il.addEventListener('input',function(){upd(row.id,'luogo',il.value);});
+    fl.appendChild(ll);fl.appendChild(il);r1.appendChild(fl);
+    card.appendChild(r1);
+
+    var r2=document.createElement('div');r2.className='frow';
+    var f1=document.createElement('div');f1.className='field';
+    var l1=document.createElement('label');l1.textContent='Dalle ore';
+    var i1=document.createElement('input');i1.type='time';i1.value=row.dalle||'';
+    i1.addEventListener('input',function(){upd(row.id,'dalle',i1.value);});
+    f1.appendChild(l1);f1.appendChild(i1);r2.appendChild(f1);
+    var f2=document.createElement('div');f2.className='field';
+    var l2=document.createElement('label');l2.textContent='Alle ore';
+    var i2=document.createElement('input');i2.type='time';i2.value=row.alle||'';
+    i2.addEventListener('input',function(){upd(row.id,'alle',i2.value);});
+    f2.appendChild(l2);f2.appendChild(i2);r2.appendChild(f2);
+    card.appendChild(r2);
+
+    var r3=document.createElement('div');r3.className='frow';
+    var fa=document.createElement('div');fa.className='field';
+    var la=document.createElement('label');la.textContent='Attività svolta';
+    var ia=document.createElement('input');ia.type='text';ia.placeholder='es. Intervento di soccorso tecnico urgente';ia.value=row.attivita||'';
+    ia.addEventListener('input',function(){upd(row.id,'attivita',ia.value);});
+    fa.appendChild(la);fa.appendChild(ia);r3.appendChild(fa);
+    card.appendChild(r3);
+
+    var r4=document.createElement('div');r4.className='frow';r4.style.marginBottom='12px';
+    var ft=document.createElement('div');ft.className='field';ft.style.flex='0 0 110px';
+    var lt=document.createElement('label');lt.textContent='Targa VF';
+    var it=document.createElement('input');it.type='text';it.placeholder='es. VF123';it.value=row.targa||'';it.maxLength=6;
+    it.addEventListener('input',function(){upd(row.id,'targa',it.value);});
+    ft.appendChild(lt);ft.appendChild(it);r4.appendChild(ft);
+    var fk=document.createElement('div');fk.className='field';
+    var lk=document.createElement('label');lk.textContent='Km totali A/R';
+    var ik=document.createElement('input');ik.type='number';ik.inputMode='numeric';ik.placeholder='0';ik.value=row.km||'';
+    ik.addEventListener('input',function(){upd(row.id,'km',ik.value);});
+    fk.appendChild(lk);fk.appendChild(ik);r4.appendChild(fk);
+    card.appendChild(r4);
+
+    var pdfBtn=document.createElement('button');pdfBtn.className='btn-pdf-sm';pdfBtn.style.width='100%';pdfBtn.textContent='📄 Genera PDF di questa richiesta';
+    (function(rid){pdfBtn.addEventListener('click',function(){makePDF(rid);});})(row.id);
+    card.appendChild(pdfBtn);
+
+    c.appendChild(card);
+  });
+}
+
+function fmtDataIt(v){
+  if(!v)return'';
+  var p=v.split('-');if(p.length!==3)return v;
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+
+function makePDF(id){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ml=25,mr=25,cw=pw-ml-mr;
+  var nome=document.getElementById('nome').value||'________________________________';
+  var turno=document.getElementById('turno').value||'____';
+  var sede=getSede();
+  var sedeAltro=document.getElementById('sedeAltro').value;
+  var datad=document.getElementById('dataDoc').value||oggiIt();
+
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(0);
+  doc.text('AL COMANDO PROVINCIALE',pw/2,22,{align:'center'});
+  doc.text('VIGILI DEL FUOCO DI BENEVENTO',pw/2,30,{align:'center'});
+
+  var y=48;
+  doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('OGGETTO: Richiesta Buono Pasto Elettronico',ml,y);y+=14;
+
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text('Con la presente il sottoscritto',ml,y);
+  doc.setFont('helvetica','bold');
+  var nx=ml+58;doc.text(nome,nx,y);
+  doc.setLineWidth(0.2);doc.line(nx,y+0.8,pw-mr,y+0.8);
+  y+=9;
+  doc.setFont('helvetica','normal');
+  doc.text('in servizio nel turno',ml,y);
+  doc.setFont('helvetica','bold');doc.text(turno,ml+38,y);
+  doc.setLineWidth(0.2);doc.line(ml+34,y+0.8,ml+50,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('presso:',ml+55,y);
+  y+=12;
+
+  SEDI.forEach(function(s){
+    var on=(s===sede);
+    doc.setDrawColor(0);doc.setLineWidth(0.3);doc.circle(ml+8,y-1.3,1.6,'S');
+    if(on){doc.setFillColor(0,0,0);doc.circle(ml+8,y-1.3,0.8,'F');}
+    doc.setFont('helvetica','normal');doc.setFontSize(10);
+    var label=(s==='Altro'&&sedeAltro)?sedeAltro:s;
+    doc.text(label,ml+14,y);
+    y+=7;
+  });
+  y+=3;
+
+  doc.text('chiede il riconoscimento di un Buono Pasto Elettronico poiché in data',ml,y,{maxWidth:cw});
+  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.data)||'__________',pw-mr-24,y);
+  doc.setLineWidth(0.2);doc.line(pw-mr-24,y+0.8,pw-mr,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('in missione',pw-mr-2,y,{align:'right'});
+  y+=9;
+
+  doc.text('a',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.luogo||'',ml+6,y);
+  doc.setLineWidth(0.2);doc.line(ml+6,y+0.8,ml+92,y+0.8);
+  doc.setFont('helvetica','normal');
+  doc.text('dalle ore',ml+96,y);
+  doc.setFont('helvetica','bold');doc.text(row.dalle||'',ml+118,y);
+  doc.setLineWidth(0.2);doc.line(ml+118,y+0.8,ml+132,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('alle ore',ml+136,y);
+  doc.setFont('helvetica','bold');doc.text(row.alle||'',ml+154,y);
+  doc.setLineWidth(0.2);doc.line(ml+154,y+0.8,pw-mr,y+0.8);
+  y+=11;
+
+  doc.setFont('helvetica','normal');doc.text('per la seguente attività',ml,y);y+=7;
+  doc.setFont('helvetica','bold');doc.text(row.attivita||'',ml,y,{maxWidth:cw});y+=7;
+  doc.setLineWidth(0.2);doc.line(ml,y-2,pw-mr,y-2);
+  y+=6;
+  doc.setFont('helvetica','normal');doc.text('non ha usufruito del pasto',ml,y);y+=14;
+
+  doc.text('Automezzo utilizzato TG VF',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.targa||'',ml+58,y);
+  doc.setLineWidth(0.2);doc.line(ml+58,y+0.8,pw-mr,y+0.8);y+=9;
+  doc.setFont('helvetica','normal');doc.text('Totale Km percorsi andata/ritorno',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.km?String(row.km):'',ml+68,y);
+  doc.setLineWidth(0.2);doc.line(ml+68,y+0.8,pw-mr,y+0.8);y+=18;
+
+  doc.setFont('helvetica','normal');doc.text('Benevento, ',ml,y);
+  doc.setFont('helvetica','bold');doc.text(datad,ml+22,y);
+  doc.setLineWidth(0.2);doc.line(ml+22,y+0.8,ml+52,y+0.8);
+  y+=22;
+  doc.setFont('helvetica','italic');doc.setFontSize(11);
+  doc.text('In fede',pw-mr-30,y,{align:'center'});y+=10;
+  doc.setLineWidth(0.3);doc.line(pw-mr-64,y,pw-mr,y);
+
+  var fn=(document.getElementById('nome').value||'dipendente').replace(/\s+/g,'_');
+  doc.save('Buono_Pasto_'+fn+'_'+(fmtDataIt(row.data)||oggiIt()).replace(/\//g,'-')+'.pdf');
+  toast('PDF generato','g');
+}
+
+requireAuth(afterAuth);
+</script>
+</body>
+</html>

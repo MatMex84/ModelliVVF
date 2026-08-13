@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mancato Pasto">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C0272D">
+<title>Richiesta Mancato Pasto — VVF</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="overlay hidden" id="overlay"><div class="spin"></div><div class="spintxt" id="spintxt">Caricamento...</div></div>
+
+<div class="topbar">
+  <div class="topbar-main">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-back" onclick="location.href='index.html'" aria-label="Torna alla dashboard">&#8249;</button>
+      <div>
+        <h1>Richiesta Mancato Pasto</h1>
+        <div class="sub" id="userSub">VV.F. Benevento</div>
+      </div>
+    </div>
+    <button class="btn-exit" onclick="doLogout()">Esci</button>
+  </div>
+  <div class="statusline">
+    <div class="sdot" id="cdot"></div>
+    <span id="clbl">...</span>
+    <span class="stime" id="ctime"></span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Profilo collassabile -->
+  <div class="profile open" id="profileCard">
+    <div class="profile-head" onclick="toggleProfile()">
+      <div>
+        <div class="pname" id="profName">Dati dipendente</div>
+        <div class="pmeta" id="profMeta">Tocca per compilare</div>
+      </div>
+      <span class="chev">&#9662;</span>
+    </div>
+    <div class="profile-body">
+      <div class="frow">
+        <div class="field" style="flex:2"><label>Cognome e Nome</label><input type="text" id="nome" placeholder="Messina Matteo" oninput="sched();updProfHead()"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Data documento</label><input type="text" id="dataDoc" placeholder="gg/mm/aaaa" oninput="sched()"></div>
+        <div class="field"><label>Capo Turno (visto)</label><input type="text" id="capoTurno" placeholder="Nome Capo Turno" oninput="sched()"></div>
+      </div>
+      <div class="frow" style="margin-bottom:0">
+        <div class="field"><label>Nome Comandante</label><input type="text" id="comandante" placeholder="Ing. Salvatore Angelo CAPOLONGO" oninput="sched()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Richieste -->
+  <div class="section-title">
+    <h2>Richieste</h2>
+    <span class="section-count" id="reqCount"></span>
+  </div>
+  <div id="rows"></div>
+  <button class="btn-add" onclick="addRow()">+ Nuova richiesta</button>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+
+function doLogout(){
+  if(!confirm('Uscire?'))return;
+  fbAuth.signOut().catch(function(){});
+  clearCreds();
+  window.location.href='index.html';
+}
+
+function afterAuth(user){
+  currentFile='u_'+user.uid;
+  document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  showOv('Caricamento dati...');
+  setDot('sync','Connessione...');
+  loadModuleData('mancatoPasto').then(function(d){
+    if(d&&!d.init){applyData(d);setDot('ok','Sincronizzato');lastSaved=new Date();updTime(lastSaved);}
+    else{setDot('ok','Pronto');setDate();document.getElementById('profileCard').classList.add('open');addRow();}
+    hideOv();
+  }).catch(function(){
+    setDot('err','Offline — dati locali');
+    var bk=localStorage.getItem('vvf_bk_mp_'+currentFile);
+    if(bk){try{applyData(JSON.parse(bk));}catch(e){setDate();addRow();}}
+    else{setDate();addRow();}
+    hideOv();
+  });
+}
+
+function sched(){setDot('sync','Modificato...');clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,2000);}
+function saveNow(){
+  clearTimeout(saveTimer);
+  if(!fbAuth.currentUser){setDot('err','Non connesso');return;}
+  setDot('sync','Salvataggio...');
+  var d=getData();
+  localStorage.setItem('vvf_bk_mp_'+currentFile,JSON.stringify(d));
+  saveModuleData('mancatoPasto',d).then(function(){lastSaved=new Date();setDot('ok','Salvato');updTime(lastSaved);})
+  .catch(function(){setDot('err','Offline — backup locale');});
+}
+
+function setDate(){document.getElementById('dataDoc').value=oggiIt();}
+
+function toggleProfile(){document.getElementById('profileCard').classList.toggle('open');}
+function updProfHead(){
+  var n=document.getElementById('nome').value;
+  document.getElementById('profName').textContent=n||'Dati dipendente';
+  document.getElementById('profMeta').textContent=n?'Dati compilati':'Tocca per compilare';
+}
+
+function getData(){
+  return{
+    nome:document.getElementById('nome').value,
+    dataDoc:document.getElementById('dataDoc').value,
+    capoTurno:document.getElementById('capoTurno').value,
+    comandante:document.getElementById('comandante').value,
+    richieste:rows
+  };
+}
+function applyData(d){
+  document.getElementById('nome').value=d.nome||'';
+  document.getElementById('capoTurno').value=d.capoTurno||'';
+  document.getElementById('comandante').value=d.comandante||'';
+  setDate();
+  rows=(d.richieste||[]).slice();
+  rc=rows.length?rows.reduce(function(m,r){return Math.max(m,r.id);},-1)+1:0;
+  renderRows();updProfHead();
+  if(d.nome) document.getElementById('profileCard').classList.remove('open');
+  else document.getElementById('profileCard').classList.add('open');
+}
+
+function addRow(){
+  rows.push({id:rc++,nInt:'',dataInt:'',luogo:'',dalleOra:'',dalleData:'',alleOra:'',alleData:'',nMissione:'',
+    rimbPernotto:false,rimbPasto:false,rimbNPasti:false,qtaPasti:''});
+  renderRows();sched();
+  setTimeout(function(){var cards=document.querySelectorAll('.item-card');if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+function delRow(id){
+  rows=rows.filter(function(r){return r.id!==id;});
+  renderRows();sched();
+}
+function upd(id,f,v){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  row[f]=v;sched();
+}
+
+function renderRows(){
+  var c=document.getElementById('rows');c.innerHTML='';
+  document.getElementById('reqCount').textContent=rows.length?rows.length+(rows.length===1?' richiesta':' richieste'):'';
+  if(!rows.length){
+    var em=document.createElement('div');em.className='empty';
+    em.innerHTML='<div class="ic">&#127828;</div><p>Nessuna richiesta inserita.<br>Tocca "+ Nuova richiesta" per iniziare.</p>';
+    c.appendChild(em);return;
+  }
+  rows.forEach(function(row){
+    var card=document.createElement('div');card.className='item-card';
+
+    var top=document.createElement('div');top.className='item-top';top.style.marginBottom='12px';
+    var fn=document.createElement('div');fn.className='field';fn.style.flex='1';
+    var ln=document.createElement('label');ln.textContent='N° intervento';
+    var inn=document.createElement('input');inn.type='text';inn.placeholder='es. 1234';inn.value=row.nInt||'';
+    inn.addEventListener('input',function(){upd(row.id,'nInt',inn.value);});
+    fn.appendChild(ln);fn.appendChild(inn);top.appendChild(fn);
+    var fd=document.createElement('div');fd.className='field';fd.style.flex='1';
+    var ld=document.createElement('label');ld.textContent='Data intervento';
+    var idd=document.createElement('input');idd.type='date';idd.value=row.dataInt||'';
+    idd.addEventListener('input',function(){upd(row.id,'dataInt',idd.value);});
+    fd.appendChild(ld);fd.appendChild(idd);top.appendChild(fd);
+    var tr=document.createElement('button');tr.className='btn-trash';tr.type='button';tr.setAttribute('aria-label','Elimina richiesta');tr.textContent='✕';tr.style.marginTop='18px';
+    (function(rid){tr.addEventListener('click',function(){delRow(rid);});})(row.id);
+    top.appendChild(tr);
+    card.appendChild(top);
+
+    var r1=document.createElement('div');r1.className='frow';
+    var fl=document.createElement('div');fl.className='field';
+    var ll=document.createElement('label');ll.textContent='Luogo';
+    var il=document.createElement('input');il.type='text';il.placeholder='Luogo intervento';il.value=row.luogo||'';
+    il.addEventListener('input',function(){upd(row.id,'luogo',il.value);});
+    fl.appendChild(ll);fl.appendChild(il);r1.appendChild(fl);
+    var fm=document.createElement('div');fm.className='field';fm.style.flex='0 0 100px';
+    var lm=document.createElement('label');lm.textContent='N° missione';
+    var im=document.createElement('input');im.type='text';im.value=row.nMissione||'';
+    im.addEventListener('input',function(){upd(row.id,'nMissione',im.value);});
+    fm.appendChild(lm);fm.appendChild(im);r1.appendChild(fm);
+    card.appendChild(r1);
+
+    var r2=document.createElement('div');r2.className='frow';
+    var f1=document.createElement('div');f1.className='field';
+    var l1=document.createElement('label');l1.textContent='Dalle ore';
+    var i1=document.createElement('input');i1.type='time';i1.value=row.dalleOra||'';
+    i1.addEventListener('input',function(){upd(row.id,'dalleOra',i1.value);});
+    f1.appendChild(l1);f1.appendChild(i1);r2.appendChild(f1);
+    var f2=document.createElement('div');f2.className='field';
+    var l2=document.createElement('label');l2.textContent='Del';
+    var i2=document.createElement('input');i2.type='date';i2.value=row.dalleData||'';
+    i2.addEventListener('input',function(){upd(row.id,'dalleData',i2.value);});
+    f2.appendChild(l2);f2.appendChild(i2);r2.appendChild(f2);
+    card.appendChild(r2);
+
+    var r3=document.createElement('div');r3.className='frow';r3.style.marginBottom='14px';
+    var f3=document.createElement('div');f3.className='field';
+    var l3=document.createElement('label');l3.textContent='Alle ore';
+    var i3=document.createElement('input');i3.type='time';i3.value=row.alleOra||'';
+    i3.addEventListener('input',function(){upd(row.id,'alleOra',i3.value);});
+    f3.appendChild(l3);f3.appendChild(i3);r3.appendChild(f3);
+    var f4=document.createElement('div');f4.className='field';
+    var l4=document.createElement('label');l4.textContent='Del';
+    var i4=document.createElement('input');i4.type='date';i4.value=row.alleData||'';
+    i4.addEventListener('input',function(){upd(row.id,'alleData',i4.value);});
+    f4.appendChild(l4);f4.appendChild(i4);r3.appendChild(f4);
+    card.appendChild(r3);
+
+    var lbl=document.createElement('span');lbl.className='lbl';lbl.textContent='Rimborso richiesto';lbl.style.display='block';lbl.style.marginBottom='2px';
+    card.appendChild(lbl);
+
+    var chkWrap=document.createElement('div');chkWrap.style.marginBottom='4px';
+
+    var mk=function(key,title,sub){
+      var lab=document.createElement('label');lab.className='chk-row';
+      var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!row[key];
+      var txt=document.createElement('div');
+      var t=document.createElement('div');t.className='ct';t.textContent=title;
+      var s=document.createElement('div');s.className='cs';s.textContent=sub;
+      txt.appendChild(t);txt.appendChild(s);
+      cb.addEventListener('change',function(){upd(row.id,key,cb.checked);if(key==='rimbNPasti')renderRows();});
+      lab.appendChild(cb);lab.appendChild(txt);
+      return lab;
+    };
+    chkWrap.appendChild(mk('rimbPernotto','Rimborso forfettario mancato pernotto','Onnicomprensivo € 20,66'));
+    chkWrap.appendChild(mk('rimbPasto','Rimborso forfettario mancato pasto','Onnicomprensivo € 20,66'));
+    chkWrap.appendChild(mk('rimbNPasti','Rimborso per n. mancato pasto','€ 30,55 a pasto'));
+    if(row.rimbNPasti){
+      var qw=document.createElement('div');qw.className='chk-qty';
+      var qlab=document.createElement('span');qlab.textContent='N° pasti';qlab.style.fontSize='12px';qlab.style.color='var(--muted)';qlab.style.fontWeight='600';
+      var qi=document.createElement('input');qi.type='number';qi.min=1;qi.inputMode='numeric';qi.value=row.qtaPasti||'';
+      qi.addEventListener('input',function(){upd(row.id,'qtaPasti',qi.value);});
+      qw.appendChild(qlab);qw.appendChild(qi);
+      chkWrap.appendChild(qw);
+    }
+    card.appendChild(chkWrap);
+
+    var pdfBtn=document.createElement('button');pdfBtn.className='btn-pdf-sm';pdfBtn.style.width='100%';pdfBtn.style.marginTop='10px';pdfBtn.textContent='📄 Genera PDF di questa richiesta';
+    (function(rid){pdfBtn.addEventListener('click',function(){makePDF(rid);});})(row.id);
+    card.appendChild(pdfBtn);
+
+    c.appendChild(card);
+  });
+}
+
+function fmtDataIt(v){
+  if(!v)return'';
+  var p=v.split('-');if(p.length!==3)return v;
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+
+function makePDF(id){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ml=22,mr=22,cw=pw-ml-mr;
+  var nome=document.getElementById('nome').value||'________________________________';
+  var datad=document.getElementById('dataDoc').value||oggiIt();
+  var capoTurno=document.getElementById('capoTurno').value||'';
+  var cmd=document.getElementById('comandante').value||DEF_CMD;
+
+  var y=20;
+  doc.setFont('times','italic');doc.setFontSize(15);doc.setTextColor(0);
+  doc.text("Ministero dell'Interno",pw/2,y,{align:'center'});y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+  doc.text('Dipartimento dei Vigili del Fuoco',pw/2,y,{align:'center'});y+=3.6;
+  doc.text('del Soccorso Pubblico e della Difesa Civile',pw/2,y,{align:'center'});y+=8;
+  doc.setFont('times','bolditalic');doc.setFontSize(13);
+  doc.text('Comando Provinciale Vigili del Fuoco di Benevento',pw/2,y,{align:'center'});y+=5;
+  doc.setFont('times','italic');doc.setFontSize(8.5);
+  doc.text('Civium pro bonis et vita',pw/2,y,{align:'center'});y+=14;
+
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(0);
+  doc.text('Il sottoscritto',ml,y);
+  doc.setFont('helvetica','bold');
+  var nx=ml+22;doc.text(nome,nx,y);
+  doc.setLineWidth(0.2);doc.line(nx,y+0.8,pw-mr-30,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('in relazione',pw-mr,y,{align:'right'});
+  y+=9;
+
+  doc.text("all'espletamento dell'intervento n°",ml,y);
+  doc.setFont('helvetica','bold');
+  var ix=ml+62;doc.text(row.nInt||'',ix,y);
+  doc.setLineWidth(0.2);doc.line(ix,y+0.8,ml+92,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('del',ml+96,y);
+  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.dataInt)||'',ml+104,y);
+  doc.setLineWidth(0.2);doc.line(ml+104,y+0.8,pw-mr,y+0.8);
+  y+=9;
+
+  doc.setFont('helvetica','normal');doc.text('effettuato a',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.luogo||'',ml+22,y);
+  doc.setLineWidth(0.2);doc.line(ml+22,y+0.8,ml+62,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('dalle ore',ml+66,y);
+  doc.setFont('helvetica','bold');doc.text(row.dalleOra||'',ml+84,y);
+  doc.setLineWidth(0.2);doc.line(ml+84,y+0.8,ml+96,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('del',ml+100,y);
+  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.dalleData)||'',ml+107,y);
+  doc.setLineWidth(0.2);doc.line(ml+107,y+0.8,pw-mr,y+0.8);
+  y+=9;
+
+  doc.setFont('helvetica','normal');doc.text('ore',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.alleOra||'',ml+8,y);
+  doc.setLineWidth(0.2);doc.line(ml+8,y+0.8,ml+20,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('del',ml+24,y);
+  doc.setFont('helvetica','bold');doc.text(fmtDataIt(row.alleData)||'',ml+31,y);
+  doc.setLineWidth(0.2);doc.line(ml+31,y+0.8,ml+58,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('alle',ml+62,y);
+  y+=7;
+  doc.text("ai sensi dell' art.14 commi 4 e 5 del",ml,y);y+=6;
+  doc.text("DPR121/2022 e dell' art. 12 comma 2 del DPR 125/2025.",ml,y);y+=12;
+
+  doc.setFont('helvetica','bold');doc.setFontSize(12);
+  doc.text('CHIEDE',pw/2,y,{align:'center'});y+=10;
+
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text('che per la missione n°',ml,y);
+  doc.setFont('helvetica','bold');doc.text(row.nMissione||'',ml+40,y);
+  doc.setLineWidth(0.2);doc.line(ml+40,y+0.8,ml+70,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('sia riconosciuto:',pw-mr,y,{align:'right'});
+  y+=11;
+
+  var opts=[
+    {on:row.rimbPernotto,t:'rimborso forfettario onnicomprensivo (20,66) mancato pernotto'},
+    {on:row.rimbPasto,t:'rimborso forfettario onnicomprensivo (20,66) mancato pasto'},
+    {on:row.rimbNPasti,t:'rimborso per n. '+(row.qtaPasti?row.qtaPasti:'___')+' mancato pasto (30,55 a pasto)'}
+  ];
+  opts.forEach(function(o){
+    doc.setDrawColor(0);doc.setLineWidth(0.35);doc.rect(ml,y-3.3,4,4,'S');
+    if(o.on){doc.setLineWidth(0.5);doc.line(ml+0.4,y-3,ml+3.6,y-0.2);doc.line(ml+0.4,y-0.2,ml+3.6,y-3);}
+    doc.setFont('helvetica','normal');doc.text(o.t,ml+7,y,{maxWidth:cw-7});
+    y+=9;
+  });
+  y+=10;
+
+  doc.text('Benevento,',ml,y);
+  doc.setFont('helvetica','bold');doc.text(datad,ml+20,y);
+  doc.setLineWidth(0.2);doc.line(ml+20,y+0.8,ml+50,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('FIRMA',pw-mr-30,y-4,{align:'center'});
+  doc.setLineWidth(0.3);doc.line(pw-mr-64,y+0.8,pw-mr,y+0.8);
+  y+=24;
+
+  doc.text('Visto: Il Capo Turno',ml,y);
+  doc.setFont('helvetica','bold');doc.text(capoTurno,ml,y+6);
+  doc.setLineWidth(0.2);doc.line(ml,y+7,ml+58,y+7);
+
+  doc.setFont('helvetica','normal');doc.text('Si autorizza',pw-mr-32,y-6,{align:'center'});
+  doc.setFont('helvetica','bold');doc.setFontSize(10.5);
+  doc.text('IL COMANDANTE',pw-mr-32,y+2,{align:'center'});
+  doc.setFontSize(9.5);
+  doc.text(cmd,pw-mr-32,y+8,{align:'center',maxWidth:60});
+
+  var fn=(document.getElementById('nome').value||'dipendente').replace(/\s+/g,'_');
+  doc.save('Mancato_Pasto_'+fn+'_'+(fmtDataIt(row.dataInt)||oggiIt()).replace(/\//g,'-')+'.pdf');
+  toast('PDF generato','g');
+}
+
+requireAuth(afterAuth);
+</script>
+</body>
+</html>

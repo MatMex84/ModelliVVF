@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Modelli VVF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C0272D">
+<title>Modelli VVF — Comando Benevento</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="shared.css">
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="overlay hidden" id="overlay"><div class="spin"></div><div class="spintxt" id="spintxt">Caricamento...</div></div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-crest">&#128658;</div>
+      <div class="login-title">Modelli VVF</div>
+      <div class="login-sub">Comando Provinciale VV.F. Benevento</div>
+      <span class="lbl">Email</span>
+      <input class="email-input" type="email" id="emailInput" inputmode="email" placeholder="nome.cognome@vigilfuoco.it" autocomplete="email" autocapitalize="off">
+      <span class="lbl">PIN — 6 cifre</span>
+      <div class="pin-row">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p0">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p1">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p2">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p3">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p4">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p5">
+      </div>
+      <div class="login-err" id="loginErr"></div>
+      <button class="btn-login" onclick="doLogin()">Accedi</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="appScreen" style="display:none">
+  <div class="topbar">
+    <div class="topbar-main">
+      <div>
+        <h1>Modelli VVF</h1>
+        <div class="sub" id="userSub">VV.F. Benevento</div>
+      </div>
+      <button class="btn-exit" onclick="doLogout()">Esci</button>
+    </div>
+  </div>
+
+  <div class="wrap noBottombar">
+    <div class="section-title"><h2>Scegli il modulo da compilare</h2></div>
+
+    <div class="mod-card" onclick="location.href='straordinario.html'">
+      <div class="mod-ic">&#128663;</div>
+      <div class="mod-txt">
+        <div class="t">Straordinario per Guida</div>
+        <div class="s">Registro mensile dei viaggi e calcolo ore di guida straordinaria</div>
+      </div>
+      <div class="mod-arrow">&#8250;</div>
+    </div>
+
+    <div class="mod-card" onclick="location.href='buono-pasto.html'">
+      <div class="mod-ic">&#127869;</div>
+      <div class="mod-txt">
+        <div class="t">Richiesta Buono Pasto</div>
+        <div class="s">Richiesta di buono pasto elettronico per missione</div>
+      </div>
+      <div class="mod-arrow">&#8250;</div>
+    </div>
+
+    <div class="mod-card" onclick="location.href='mancato-pasto.html'">
+      <div class="mod-ic">&#127828;</div>
+      <div class="mod-txt">
+        <div class="t">Richiesta Mancato Pasto</div>
+        <div class="s">Rimborso forfettario mancato pernotto / mancato pasto</div>
+      </div>
+      <div class="mod-arrow">&#8250;</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+var logged=false;
+
+function initPinInputs(){
+  for(var i=0;i<6;i++){(function(idx){
+    var el=document.getElementById('p'+idx);
+    el.addEventListener('input',function(){
+      var v=el.value.replace(/[^0-9]/g,'');
+      el.value=v?v[v.length-1]:'';
+      el.classList[el.value?'add':'remove']('filled');
+      if(el.value&&idx<5)document.getElementById('p'+(idx+1)).focus();
+    });
+    el.addEventListener('keydown',function(e){
+      if(e.key==='Backspace'&&!el.value&&idx>0){var pr=document.getElementById('p'+(idx-1));pr.value='';pr.classList.remove('filled');pr.focus();}
+      if(e.key==='Enter')doLogin();
+    });
+  })(i);}
+}
+function fillPin(pin){for(var i=0;i<6;i++){var d=document.getElementById('p'+i);d.value=pin[i]||'';if(d.value)d.classList.add('filled');}}
+function getPin(){var p='';for(var i=0;i<6;i++)p+=document.getElementById('p'+i).value||'';return p;}
+function setErr(m){document.getElementById('loginErr').textContent=m;}
+
+function initLogin(){
+  initPinInputs();
+  var c=getCreds();
+  if(c){
+    document.getElementById('emailInput').value=c.email;
+    fillPin(c.pin);
+  }
+  fbAuth.onAuthStateChanged(function(u){ if(u&&!logged)afterLogin(u.email); });
+}
+
+function doLogin(){
+  var email=document.getElementById('emailInput').value.trim();
+  var pin=getPin();
+  if(!email){setErr('Inserisci la tua email');return;}
+  if(pin.length<6){setErr('Inserisci le 6 cifre del PIN');return;}
+  setErr('');
+  showOv('Accesso...');
+  localStorage.setItem(CRED_KEY,JSON.stringify({email:email,pin:pin}));
+  fbLogin(email,pin)
+    .then(function(){ if(!logged)afterLogin(email); })
+    .catch(function(e){
+      hideOv();
+      clearCreds();
+      setErr(authErr(e));
+    });
+}
+function afterLogin(email){
+  logged=true;
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('userSub').textContent=slugify(email||'').replace(/\./g,' ');
+  hideOv();
+}
+function doLogout(){
+  if(!confirm('Uscire?'))return;
+  logged=false;
+  fbAuth.signOut().catch(function(){});
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='block';
+  document.getElementById('emailInput').value='';
+  for(var i=0;i<6;i++){var d=document.getElementById('p'+i);d.value='';d.classList.remove('filled');}
+  clearCreds();
+  setErr('');
+}
+
+initLogin();
+</script>
+</body>
+</html>

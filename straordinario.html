@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Straordinario">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C0272D">
+<title>Straordinario Guida — VVF</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="shared.css">
+<style>
+.tf-targa{width:104px;flex-shrink:0}
+.tf-dest{flex:1;min-width:0}
+.tf-targa input,.tf-dest input{width:100%;padding:12px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;color:var(--ink);background:var(--bg);-webkit-appearance:none}
+.tf-targa input{text-align:center;font-weight:700;letter-spacing:.5px}
+.tf-targa input:focus,.tf-dest input:focus{outline:none;border-color:var(--red);background:#fff}
+.day-box{width:58px;flex-shrink:0}
+.day-box input{width:100%;padding:10px 4px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:20px;font-weight:800;text-align:center;color:var(--ink);background:var(--bg);-webkit-appearance:none}
+.day-box input:focus{outline:none;border-color:var(--red);background:#fff}
+.day-box label{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;display:block;margin-top:3px;letter-spacing:.5px}
+.trip-times{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.time-f{flex:1}
+.time-f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px}
+.time-f input{width:100%;padding:12px 8px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:16px;font-weight:600;text-align:center;color:var(--ink);background:var(--bg);-webkit-appearance:none}
+.time-f input:focus{outline:none;border-color:var(--red);background:#fff}
+.time-arrow{color:var(--muted);font-size:16px;margin-top:18px;flex-shrink:0}
+.ore-chip{flex-shrink:0;min-width:64px;margin-top:18px;background:var(--red-light);color:var(--red);border-radius:var(--radius-sm);padding:12px 10px;font-size:16px;font-weight:800;text-align:center}
+.ore-chip.empty{background:var(--bg);color:var(--muted);font-weight:600}
+.trip-bottom{display:flex;gap:8px}
+.mese-bar{display:flex;gap:8px;margin-bottom:12px;align-items:stretch}
+.mese-nav{flex:0 0 44px;background:var(--card);border:none;border-radius:var(--radius);color:var(--red);font-size:19px;font-weight:800;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:center;padding:0}
+.mese-nav:active{background:var(--red-light)}
+.mese-pill{flex:1;background:var(--card);border-radius:var(--radius);padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);min-width:0}
+.mese-pill label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);display:block;margin-bottom:3px}
+.mese-pill input{border:none;background:none;font-size:15px;font-weight:700;color:var(--ink);width:100%;padding:0;-webkit-appearance:none;text-align:center}
+.mese-pill input:focus{outline:none}
+.btn-csv{background:var(--card);border:1.5px solid var(--red-mid);color:var(--red);font-size:12px;font-weight:700;padding:7px 12px;border-radius:100px;cursor:pointer;flex-shrink:0}
+.btn-csv:active{background:var(--red-light)}
+.sheet-head{padding:18px 18px 12px;border-bottom:1px solid var(--line)}
+.sheet-head .t{font-size:16px;font-weight:800}
+.sheet-head .s{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+.sheet-body{overflow:auto;padding:10px 12px;-webkit-overflow-scrolling:touch}
+.sheet-foot{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px}
+.sheet-foot button{flex:1;padding:14px 6px;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer}
+.sf-add{background:var(--green);color:#fff}
+.sf-rep{background:var(--red);color:#fff}
+.sf-cnc{background:var(--bg);color:var(--mid);flex:0 0 92px}
+.crow{display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid var(--line);font-size:13px}
+.crow:last-child{border-bottom:none}
+.crow.off{opacity:.38}
+.crow input[type=checkbox]{width:20px;height:20px;accent-color:var(--red);flex-shrink:0}
+.crow .cg{width:26px;font-weight:800;text-align:center;flex-shrink:0}
+.crow .cd{flex:0 0 66px;font-size:11px;font-weight:700;padding:5px 0;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--mid);cursor:pointer;text-align:center;flex-shrink:0}
+.crow .cd.a{border-color:var(--red);background:var(--red-light);color:var(--red)}
+.crow .ct{flex:0 0 92px;font-variant-numeric:tabular-nums;font-weight:600;flex-shrink:0}
+.crow .co{flex:0 0 40px;color:var(--red);font-weight:800;flex-shrink:0}
+.crow .cx{flex:1;min-width:0;color:var(--mid);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csv-warn{background:var(--red-light);color:var(--red-dark);font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin:2px 6px 8px;line-height:1.45}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="overlay hidden" id="overlay"><div class="spin"></div><div class="spintxt" id="spintxt">Caricamento...</div></div>
+
+<div class="topbar">
+  <div class="topbar-main">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-back" onclick="location.href='index.html'" aria-label="Torna alla dashboard">&#8249;</button>
+      <div>
+        <h1>Straordinario Guida</h1>
+        <div class="sub" id="userSub">VV.F. Benevento</div>
+      </div>
+    </div>
+    <button class="btn-exit" onclick="doLogout()">Esci</button>
+  </div>
+  <div class="statusline">
+    <div class="sdot" id="cdot"></div>
+    <span id="clbl">...</span>
+    <span class="stime" id="ctime"></span>
+    <button id="btnSync" onclick="syncNow()" style="margin-left:8px;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:13px;font-weight:600;padding:5px 12px;border-radius:100px;cursor:pointer;flex-shrink:0">⟳ Sincronizza</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Profilo collassabile -->
+  <div class="profile open" id="profileCard">
+    <div class="profile-head" onclick="toggleProfile()">
+      <div>
+        <div class="pname" id="profName">Dati dipendente</div>
+        <div class="pmeta" id="profMeta">Tocca per compilare</div>
+      </div>
+      <span class="chev">&#9662;</span>
+    </div>
+    <div class="profile-body">
+      <div class="frow">
+        <div class="field" style="flex:2"><label>Cognome e Nome</label><input type="text" id="nome" placeholder="Messina Matteo" oninput="sched();updProfHead()"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Qualifica</label><input type="text" id="qualifica" placeholder="VE" oninput="sched();updProfHead()"></div>
+        <div class="field"><label>Turno</label>
+          <select id="turno" onchange="sched();updProfHead()"><option value="">--</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Data documento</label><input type="text" id="dataDoc" placeholder="gg/mm/aaaa" oninput="sched()"></div>
+      </div>
+      <div class="frow" style="margin-bottom:0">
+        <div class="field"><label>Nome Comandante</label><input type="text" id="comandante" placeholder="Ing. Salvatore Angelo CAPOLONGO" oninput="sched()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mese -->
+  <div class="mese-bar">
+    <button class="mese-nav" type="button" onclick="stepMese(-1)" aria-label="Mese precedente">&#8249;</button>
+    <div class="mese-pill">
+      <label>Mese di riferimento</label>
+      <input type="month" id="mese" oninput="onMeseInput(this.value)" onchange="onMeseInput(this.value)" style="-webkit-appearance:none;appearance:none;font-size:16px;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);width:100%;background:#fff;color:var(--ink);text-align:center">
+    </div>
+    <button class="mese-nav" type="button" onclick="stepMese(1)" aria-label="Mese successivo">&#8250;</button>
+  </div>
+
+  <!-- Viaggi -->
+  <div class="section-title">
+    <h2>Viaggi</h2>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="section-count" id="tripsCount"></span>
+      <button type="button" class="btn-csv" onclick="document.getElementById('csvFile').click()">&#8681; Importa CSV</button>
+    </div>
+  </div>
+  <input type="file" id="csvFile" accept=".csv,text/csv" hidden onchange="csvPick(this)">
+  <div id="rows"></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="btn-add" style="flex:1;margin-bottom:0" onclick="addRow(false)">+ Andata</button>
+    <button class="btn-add" style="flex:1;margin-bottom:0;border-color:var(--muted);color:var(--mid)" onclick="addRow(true)">+ Ritorno</button>
+  </div>
+
+</div>
+
+<!-- Bottom bar -->
+<div class="bottombar">
+  <div class="bb-inner">
+    <div class="bb-tot">
+      <div class="v" id="totale">0:00</div>
+      <div class="l">ore totali</div>
+    </div>
+    <button class="bb-btn bb-save" onclick="saveNow()">&#9729; Salva</button>
+    <button class="bb-btn bb-pdf" onclick="makePDF()">&#128196; PDF</button>
+    <button class="bb-btn bb-menu" id="btnDel" onclick="askDel()" title="Elimina tutto">&#128465;</button>
+  </div>
+</div>
+
+<!-- ANTEPRIMA IMPORT CSV -->
+<div class="sheet" id="csvSheet">
+  <div class="sheet-box">
+    <div class="sheet-head">
+      <div class="t">Importa da CSV</div>
+      <div class="s" id="csvInfo"></div>
+    </div>
+    <div class="sheet-body" id="csvBody"></div>
+    <div class="sheet-foot">
+      <button class="sf-cnc" onclick="csvClose()">Annulla</button>
+      <button class="sf-add" onclick="csvApply('add')">Aggiungi</button>
+      <button class="sf-rep" onclick="csvApply('replace')">Sostituisci</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete overlay -->
+<div id="delOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-end;justify-content:center">
+  <div class="sheet-box sheet-confirm">
+    <div class="ic">&#128465;</div>
+    <div class="t">Eliminare tutti i dati?</div>
+    <div class="s">I dati del mese verranno cancellati dal cloud. Questa azione non si può annullare.</div>
+    <button class="danger" onclick="confirmDel()">Elimina</button>
+    <button class="cancel" onclick="cancelDel()">Annulla</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+var PREFIX = 'VVF_BN_CMD_'; /* solo per recuperare il vecchio backup locale della app originale */
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+var mesiData={},curMese='';
+
+function switchMese(newMese){
+  if(!newMese||newMese===curMese)return;
+  if(curMese)mesiData[curMese]=rows;
+  curMese=newMese;
+  rows=(mesiData[curMese]||[]).slice();
+  rc=rows.length?rows.reduce(function(m,r){return Math.max(m,r.id);},-1)+1:0;
+  renderRows();updTot();
+}
+function onMeseInput(v){
+  if(!/^\d{4}-\d{2}$/.test(v))return;
+  switchMese(v);sched();
+}
+function stepMese(delta){
+  var cur=document.getElementById('mese').value||curMese||nowMese();
+  var p=cur.split('-');var y=parseInt(p[0],10),m=parseInt(p[1],10)-1+delta;
+  if(m<0){m=11;y--;}if(m>11){m=0;y++;}
+  var nv=y+'-'+pad2(m+1);
+  document.getElementById('mese').value=nv;
+  onMeseInput(nv);
+}
+
+function legacyKey(e,p){return 'vvf_bk_'+PREFIX+slugify(e)+'_'+p+'.json';}
+
+function doLogout(){
+  if(!confirm('Uscire?'))return;
+  fbAuth.signOut().catch(function(){});
+  clearCreds();
+  window.location.href='index.html';
+}
+
+function afterAuth(user){
+  currentFile='u_'+user.uid;
+  document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  showOv('Caricamento dati...');
+  setDot('sync','Connessione...');
+  loadModuleData('fogli').then(function(d){
+    if(d&&!d.init){applyData(d);setDot('ok','Sincronizzato');lastSaved=new Date();updTime(lastSaved);}
+    else if(migrateLocal()){setDot('ok','Dati locali importati');toast('Dati importati nel cloud','g');}
+    else{setDot('ok','Pronto');initEmptyMese();document.getElementById('profileCard').classList.add('open');addRow();}
+    hideOv();
+  }).catch(function(){
+    setDot('err','Offline — dati locali');
+    var bk=localStorage.getItem('vvf_bk_'+currentFile)||legacyBackup(user.email);
+    if(bk){try{applyData(JSON.parse(bk));}catch(e){initEmptyMese();addRow();}}
+    else{initEmptyMese();addRow();}
+    hideOv();
+  });
+}
+function legacyBackup(email){
+  var c=getCreds();
+  return c?localStorage.getItem(legacyKey(c.email||email,c.pin)):null;
+}
+function migrateLocal(){
+  var bk=localStorage.getItem('vvf_bk_'+currentFile)||legacyBackup();
+  if(!bk)return false;
+  try{ applyData(JSON.parse(bk)); }catch(e){ return false; }
+  saveNow();
+  return true;
+}
+
+function initEmptyMese(){
+  mesiData={};curMese=nowMese();
+  document.getElementById('mese').value=curMese;
+  rows=[];rc=0;
+}
+
+function docRef(){ return moduleDocRef('fogli'); }
+function saveData(d){ return saveModuleData('fogli',d); }
+
+function sched(){setDot('sync','Modificato...');clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,2000);}
+function saveNow(){
+  clearTimeout(saveTimer);
+  if(!fbAuth.currentUser){setDot('err','Non connesso');return;}
+  setDot('sync','Salvataggio...');
+  var d=getData();
+  localStorage.setItem('vvf_bk_'+currentFile,JSON.stringify(d));
+  saveData(d).then(function(){lastSaved=new Date();setDot('ok','Salvato');updTime(lastSaved);})
+  .catch(function(){setDot('err','Offline — backup locale');});
+}
+function askDel(){ document.getElementById('delOverlay').style.display='flex'; }
+function cancelDel(){ document.getElementById('delOverlay').style.display='none'; }
+function confirmDel(){
+  document.getElementById('delOverlay').style.display='none';
+  localStorage.removeItem('vvf_bk_'+currentFile);
+  if(fbAuth.currentUser)docRef().delete().catch(function(){});
+  mesiData={};curMese=nowMese();rows=[];rc=0;
+  ['nome','qualifica','dataDoc','comandante'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('turno').value='';
+  document.getElementById('mese').value=curMese;
+  setDate();addRow();updTot();updProfHead();
+  setDot('ok','Dati eliminati');toast('Dati eliminati','r');
+}
+
+function setDate(){document.getElementById('dataDoc').value=oggiIt();}
+
+function toggleProfile(){document.getElementById('profileCard').classList.toggle('open');}
+function updProfHead(){
+  var n=document.getElementById('nome').value;
+  var q=document.getElementById('qualifica').value;
+  var t=document.getElementById('turno').value;
+  document.getElementById('profName').textContent=n||'Dati dipendente';
+  var meta=[];if(q)meta.push(q);if(t)meta.push('Turno '+t);
+  document.getElementById('profMeta').textContent=meta.length?meta.join(' · '):'Tocca per compilare';
+}
+
+function getData(){
+  if(curMese)mesiData[curMese]=rows;
+  return{nome:document.getElementById('nome').value,qualifica:document.getElementById('qualifica').value,turno:document.getElementById('turno').value,mese:curMese,dataDoc:document.getElementById('dataDoc').value,comandante:document.getElementById('comandante').value,mesi:mesiData};
+}
+function applyData(d,keepView){
+  document.getElementById('nome').value=d.nome||'';
+  document.getElementById('qualifica').value=d.qualifica||'';
+  document.getElementById('turno').value=d.turno||'';
+  document.getElementById('comandante').value=d.comandante||'';
+  setDate();
+  if(d.mesi){
+    mesiData=d.mesi;
+  }else{
+    mesiData={};
+    if(d.rows&&d.rows.length)mesiData[d.mese||nowMese()]=d.rows;
+  }
+  curMese=(keepView&&curMese)?curMese:nowMese();
+  document.getElementById('mese').value=curMese;
+  rows=(mesiData[curMese]||[]).slice();
+  rc=rows.length?rows.reduce(function(m,r){return Math.max(m,r.id);},-1)+1:0;
+  renderRows();updTot();updProfHead();
+  if(d.nome) document.getElementById('profileCard').classList.remove('open');
+  else document.getElementById('profileCard').classList.add('open');
+}
+
+function addRow(isRitorno){
+  var prefill={giorno:'',targa:'',dest:''};
+  if(isRitorno){
+    for(var i=rows.length-1;i>=0;i--){
+      if(rows[i].andata){
+        prefill.giorno=rows[i].giorno;
+        prefill.targa=rows[i].targa;
+        prefill.dest=rows[i].dest;
+        break;
+      }
+    }
+  }
+  rows.push({id:rc++,andata:!isRitorno,ritorno:!!isRitorno,giorno:prefill.giorno,dalle:'',alle:'',nore:'',targa:prefill.targa,dest:prefill.dest});
+  renderRows();sched();
+  setTimeout(function(){var cards=document.querySelectorAll('.item-card');if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+function delRow(id){
+  rows=rows.filter(function(r){return r.id!==id;});
+  renderRows();updTot();sched();
+}
+
+function renderRows(){
+  var c=document.getElementById('rows');c.innerHTML='';
+  document.getElementById('tripsCount').textContent=rows.length?rows.length+(rows.length===1?' viaggio':' viaggi'):'';
+  if(!rows.length){
+    var em=document.createElement('div');em.className='empty';
+    em.innerHTML='<div class="ic">&#128663;</div><p>Nessun viaggio inserito.<br>Tocca "+ Andata" per iniziare.</p>';
+    c.appendChild(em);return;
+  }
+  rows.forEach(function(row){
+    var card=document.createElement('div');card.className='item-card';
+
+    var top=document.createElement('div');top.className='item-top';
+
+    var db=document.createElement('div');db.className='day-box';
+    var di=document.createElement('input');di.type='number';di.min=1;di.max=31;di.placeholder='--';di.value=row.giorno||'';di.inputMode='numeric';
+    di.addEventListener('input',function(){upd(row.id,'giorno',di.value);});
+    var dl=document.createElement('label');dl.textContent='Giorno';
+    db.appendChild(di);db.appendChild(dl);top.appendChild(db);
+
+    var seg=document.createElement('div');seg.className='dir-seg';
+    var ba=document.createElement('button');ba.type='button';ba.className='dir-btn'+(row.andata?' on':'');ba.textContent='Andata';
+    ba.addEventListener('click',function(){upd(row.id,'andata',!row.andata);renderRows();});
+    var br=document.createElement('button');br.type='button';br.className='dir-btn'+(row.ritorno?' on':'');br.textContent='Ritorno';
+    br.addEventListener('click',function(){
+      if(!row.ritorno){
+        if(!row.giorno||!row.targa){
+          for(var ri=rows.length-1;ri>=0;ri--){
+            if(rows[ri].andata&&rows[ri].id!==row.id){
+              if(!row.giorno)row.giorno=rows[ri].giorno;
+              if(!row.targa)row.targa=rows[ri].targa;
+              if(!row.dest)row.dest=rows[ri].dest;
+              break;
+            }
+          }
+        }
+      }
+      upd(row.id,'ritorno',!row.ritorno);renderRows();
+    });
+    seg.appendChild(ba);seg.appendChild(br);top.appendChild(seg);
+
+    var tr=document.createElement('button');tr.className='btn-trash';tr.type='button';tr.setAttribute('aria-label','Elimina viaggio');tr.textContent='✕';
+    (function(rid){tr.addEventListener('click',function(){delRow(rid);});})(row.id);
+    top.appendChild(tr);
+    card.appendChild(top);
+
+    var times=document.createElement('div');times.className='trip-times';
+    var f1=document.createElement('div');f1.className='time-f';
+    var l1=document.createElement('label');l1.textContent='Dalle';
+    var i1=document.createElement('input');i1.type='time';i1.value=row.dalle||'';
+    i1.addEventListener('input',function(){upd(row.id,'dalle',i1.value);refreshOre(row.id);});
+    f1.appendChild(l1);f1.appendChild(i1);times.appendChild(f1);
+
+    var ar=document.createElement('div');ar.className='time-arrow';ar.innerHTML='&#8594;';times.appendChild(ar);
+
+    var f2=document.createElement('div');f2.className='time-f';
+    var l2=document.createElement('label');l2.textContent='Alle';
+    var i2=document.createElement('input');i2.type='time';i2.value=row.alle||'';
+    i2.addEventListener('input',function(){upd(row.id,'alle',i2.value);refreshOre(row.id);});
+    f2.appendChild(l2);f2.appendChild(i2);times.appendChild(f2);
+
+    var oc=document.createElement('div');oc.className='ore-chip'+(row.nore?'':' empty');oc.id='oc'+row.id;
+    oc.textContent=row.nore||'0:00';
+    times.appendChild(oc);
+    card.appendChild(times);
+
+    var bot=document.createElement('div');bot.className='trip-bottom';
+    var tgw=document.createElement('div');tgw.className='tf-targa';
+    var tgi=document.createElement('input');tgi.type='text';tgi.placeholder='Targa VF';tgi.value=row.targa||'';tgi.maxLength=6;tgi.inputMode='numeric';
+    tgi.addEventListener('input',function(){upd(row.id,'targa',tgi.value);});
+    tgw.appendChild(tgi);bot.appendChild(tgw);
+    var dew=document.createElement('div');dew.className='tf-dest';
+    var dei=document.createElement('input');dei.type='text';dei.placeholder='Destinazione';dei.value=row.dest||'';
+    dei.addEventListener('input',function(){upd(row.id,'dest',dei.value);});
+    dew.appendChild(dei);bot.appendChild(dew);
+    card.appendChild(bot);
+
+    c.appendChild(card);
+  });
+}
+
+function refreshOre(id){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  var oc=document.getElementById('oc'+id);
+  if(oc){oc.textContent=row.nore||'0:00';oc.className='ore-chip'+(row.nore?'':' empty');}
+}
+
+function upd(id,f,v){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  row[f]=v;
+  if(f==='dalle'||f==='alle'){row.nore=calcH(row.dalle,row.alle);}
+  updTot();sched();
+}
+function calcH(a,b){
+  if(!a||!b)return'';
+  var ah=parseInt(a),am=parseInt(a.split(':')[1]),bh=parseInt(b),bm=parseInt(b.split(':')[1]);
+  var m=(bh*60+bm)-(ah*60+am);if(m<=0)m+=1440;
+  return Math.floor(m/60)+':'+pad2(m%60);
+}
+function updTot(){
+  var t=0;rows.forEach(function(r){if(r.nore&&r.nore.indexOf(':')>-1){var p=r.nore.split(':');t+=parseInt(p[0])*60+parseInt(p[1]);}});
+  var s=Math.floor(t/60)+':'+pad2(t%60);
+  document.getElementById('totale').textContent=s;return s;
+}
+
+function makePDF(){
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ml=20,mr=20,cw=pw-ml-mr;
+  var nome=document.getElementById('nome').value||'________________________';
+  var qual=document.getElementById('qualifica').value||'____';
+  var turn=document.getElementById('turno').value||'____';
+  var meseL=mese2label(document.getElementById('mese').value)||'_____________';
+  var datad=document.getElementById('dataDoc').value;
+  var cmd=document.getElementById('comandante').value||DEF_CMD;
+  var tot=updTot();
+
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);
+  doc.text('AI Comando Provinciale VV.F. di',pw-mr,15,{align:'right'});
+  doc.text('Benevento',pw-mr,20,{align:'right'});
+  var y=28;
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.line(ml,y,pw-mr,y);y+=7;
+  doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('OGGETTO: Ore di lavoro straordinario per guida',ml,y);y+=9;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Il/La Sottoscritto/a',ml,y);
+  doc.setFont('helvetica','bold');
+  var nx=ml+38;doc.text(nome,nx,y);
+  doc.setLineWidth(0.2);doc.line(nx,y+0.8,nx+Math.max(doc.getTextWidth(nome),40),y+0.8);
+  doc.setFont('helvetica','normal');
+  doc.text('in servizio presso questo Comando',pw-mr-doc.getTextWidth('in servizio presso questo Comando'),y);
+  y+=7;
+  doc.text('Qualifica',ml,y);doc.setFont('helvetica','bold');doc.text(qual,ml+18,y);
+  doc.setFont('helvetica','normal');doc.text('turno',ml+32,y);
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.rect(ml+42,y-4,14,6,'S');
+  doc.setFont('helvetica','bold');doc.text(turn,ml+49,y,{align:'center'});y+=7;
+  doc.setFont('helvetica','normal');
+  doc.text('Dichiara di aver effettuato in eccedenza all\'orario di lavoro ordinario le sottoindicate ore di',ml,y);y+=5;
+  doc.text('guida relative al mese di',ml,y);
+  doc.rect(ml+43,y-4,28,6,'S');doc.setFont('helvetica','bold');doc.text(meseL,ml+57,y,{align:'center'});
+  doc.setFont('helvetica','normal');doc.text('per un totale ore di :',ml+73,y);
+  doc.rect(ml+104,y-4,18,6,'S');doc.setFont('helvetica','bold');doc.text(tot,ml+113,y,{align:'center'});
+  doc.setFont('helvetica','normal');doc.text(', e ne chiede la liquidazione.',ml+124,y);y+=9;
+
+  var cols=[10,10,15,20,20,16,20,cw-111];
+  var heads=['Andata','Ritorno','GIORNO','dalle ore','alle ore','n.ore guida','Targa VF','DESTINAZIONE'];
+  var rh=6.5;
+  doc.setFillColor(230,230,230);doc.rect(ml,y,cw,rh,'F');
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.rect(ml,y,cw,rh,'S');
+  var vcx=ml;for(var vi=0;vi<cols.length-1;vi++){vcx+=cols[vi];doc.line(vcx,y,vcx,y+rh);}
+  doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(0);
+  var cx=ml;heads.forEach(function(h,i){doc.text(h,cx+cols[i]/2,y+rh/2+1,{align:'center'});cx+=cols[i];});y+=rh;
+  var drows=rows.filter(function(r){return r.giorno||r.dalle||r.alle||r.targa||r.dest;});
+  drows.forEach(function(row){
+    doc.setFillColor(255,255,255);doc.rect(ml,y,cw,rh,'F');
+    doc.setDrawColor(0);doc.setLineWidth(0.2);doc.rect(ml,y,cw,rh,'S');
+    var vx=ml;for(var vj=0;vj<cols.length-1;vj++){vx+=cols[vj];doc.line(vx,y,vx,y+rh);}
+    cx=ml;
+    [row.andata?'Si':'',row.ritorno?'Si':'',row.giorno?String(row.giorno):'',row.dalle||'',row.alle||'',row.nore||'',row.targa||'',row.dest||'']
+    .forEach(function(cell,i){
+      doc.setFont('helvetica',i===5&&cell?'bold':'normal');doc.setTextColor(0);
+      if(i===7)doc.text(cell,cx+2,y+rh/2+1,{maxWidth:cols[i]-3});
+      else doc.text(cell,cx+cols[i]/2,y+rh/2+1,{align:'center'});
+      cx+=cols[i];
+    });y+=rh;
+  });
+  for(var e2=0;e2<Math.max(0,10-drows.length);e2++){
+    doc.setFillColor(255,255,255);doc.rect(ml,y,cw,rh,'F');doc.setDrawColor(0);doc.setLineWidth(0.2);doc.rect(ml,y,cw,rh,'S');
+    var vx2=ml;for(var vk=0;vk<cols.length-1;vk++){vx2+=cols[vk];doc.line(vx2,y,vx2,y+rh);}
+    y+=rh;
+  }
+  y+=8;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(0);
+  doc.text('Benevento,',ml,y);
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.rect(ml+22,y-4,30,6,'S');
+  doc.text(datad,ml+37,y,{align:'center'});
+  doc.text('Firma del dipendente',pw-mr-46,y);y+=20;
+  doc.setDrawColor(0);doc.setLineWidth(0.5);doc.rect(ml,y,cw,36,'S');
+  doc.setFontSize(9);doc.setFont('helvetica','bold');
+  doc.text('Riservato Ufficio Ragioneria',pw/2,y+6,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  doc.text('Dopo aver effettuato il controllo del prospetto mensile delle timbrature, si conferma cle le ore di guida straordinarie dichiarate dal',ml+3,y+12,{maxWidth:cw-6});
+  doc.text('dipendente sono state effettivamente rese.',ml+3,y+17);
+  doc.setFont('helvetica','bold');
+  doc.text('IL RESPONSABILE DELL\'UFFICIO RAGIONERIA',pw/2,y+26,{align:'center'});
+  doc.setLineWidth(0.3);doc.line(ml+25,y+33,pw-mr-25,y+33);y+=42;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Visto: si autorizza il pagamento di n.',ml,y);
+  doc.rect(ml+70,y-4,22,6,'S');doc.text('Ore',ml+94,y);y+=10;
+  doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('IL COMANDANTE',pw/2,y,{align:'center'});y+=5;
+  doc.text(cmd,pw/2,y,{align:'center'});
+  var fn=(document.getElementById('nome').value||'dipendente').replace(/\s+/g,'_');
+  doc.save('Straordinario_Guida_'+fn+'_'+mese2label(document.getElementById('mese').value||'')+'.pdf');
+  toast('PDF generato','g');
+}
+
+/* ═══════════ IMPORT CSV EVENTI ═══════════
+   Compila SOLO i campi già esistenti:
+   Data -> Mese + Giorno · Inizio -> dalle · Fine -> alle · Targa -> Targa VF
+   Note -> Destinazione · n.ore guida calcolate come sempre da dalle/alle
+   Andata/Ritorno: prima uscita del giorno = Andata, le successive = Ritorno (modificabile).
+   Vengono importate solo le righe con Tipo "Ore guida".                        */
+var csvRows=[],csvName='';
+
+function csvNorm(s){
+  s=String(s==null?'':s).replace(/^﻿/,'').trim().toLowerCase();
+  try{s=s.normalize('NFD').replace(/[̀-ͯ]/g,'');}catch(e){}
+  return s;
+}
+function csvDecode(buf){
+  var b=new Uint8Array(buf),enc=null;
+  if(b[0]===0xFF&&b[1]===0xFE)enc='utf-16le';
+  else if(b[0]===0xFE&&b[1]===0xFF)enc='utf-16be';
+  else{var n=Math.min(b.length,512),z=0;for(var i=0;i<n;i++)if(b[i]===0)z++;if(z>n/8)enc='utf-16le';}
+  var t;
+  if(enc){t=new TextDecoder(enc).decode(b);}
+  else{
+    t=new TextDecoder('utf-8').decode(b);
+    if(t.indexOf('�')>-1){try{t=new TextDecoder('windows-1252').decode(b);}catch(e){}}
+  }
+  return t.replace(/^﻿/,'');
+}
+function csvParse(text){
+  text=text.replace(/\r\n?/g,'\n').replace(/\n+$/,'');
+  if(!text)return[];
+  var first=text.split('\n')[0],delim=';',max=-1;
+  [';',',','\t','|'].forEach(function(d){var c=first.split(d).length-1;if(c>max){max=c;delim=d;}});
+  var out=[],row=[],f='',q=false;
+  for(var i=0;i<text.length;i++){
+    var c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"')q=true;
+    else if(c===delim){row.push(f);f='';}
+    else if(c==='\n'){row.push(f);out.push(row);row=[];f='';}
+    else f+=c;
+  }
+  row.push(f);out.push(row);
+  return out.filter(function(r){return r.some(function(x){return String(x).trim()!=='';});});
+}
+function csvDate(v){
+  v=String(v||'').trim();
+  var m=/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(v);
+  if(m){var y=m[3].length===2?'20'+m[3]:m[3];return{mese:y+'-'+pad2(m[2]),giorno:parseInt(m[1],10)};}
+  m=/^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+  if(m)return{mese:m[1]+'-'+m[2],giorno:parseInt(m[3],10)};
+  return null;
+}
+function csvTime(v){
+  v=String(v||'').trim().replace('.',':');
+  var m=/^(\d{1,2}):(\d{2})/.exec(v);
+  return m?pad2(m[1])+':'+m[2]:'';
+}
+function csvPick(inp){
+  var file=inp.files&&inp.files[0];inp.value='';
+  if(!file)return;
+  csvName=file.name;
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{csvBuild(csvDecode(fr.result));}
+    catch(e){toast(e.message||'CSV non leggibile','r');}
+  };
+  fr.onerror=function(){toast('Impossibile leggere il file','r');};
+  fr.readAsArrayBuffer(file);
+}
+function csvBuild(text){
+  var t=csvParse(text);
+  if(!t.length)throw new Error('CSV vuoto');
+  var head=t[0].map(csvNorm),ix={};
+  head.forEach(function(h,i){
+    if(h==='data')ix.data=i;
+    else if(h==='tipo')ix.tipo=i;
+    else if(h==='inizio')ix.inizio=i;
+    else if(h==='fine')ix.fine=i;
+    else if(h==='targa')ix.targa=i;
+    else if(h==='note')ix.note=i;
+  });
+  if(ix.data===undefined)throw new Error('CSV non riconosciuto: manca la colonna "Data"');
+  var list=[];
+  t.slice(1).forEach(function(r){
+    var g=function(k){return ix[k]===undefined?'':String(r[ix[k]]==null?'':r[ix[k]]).trim();};
+    if(ix.tipo!==undefined&&g('tipo')&&csvNorm(g('tipo')).indexOf('guida')<0)return;
+    var d=csvDate(g('data'));if(!d)return;
+    var dalle=csvTime(g('inizio')),alle=csvTime(g('fine'));
+    if(!dalle&&!alle)return;
+    list.push({mese:d.mese,giorno:d.giorno,dalle:dalle,alle:alle,
+      targa:g('targa'),dest:g('note'),nore:calcH(dalle,alle),_on:true});
+  });
+  if(!list.length)throw new Error('Nessuna riga "Ore guida" valida nel CSV');
+  list.sort(function(a,b){
+    var ka=a.mese+pad2(a.giorno)+(a.dalle||'99:99');
+    var kb=b.mese+pad2(b.giorno)+(b.dalle||'99:99');
+    return ka<kb?-1:ka>kb?1:0;
+  });
+  var seen={};
+  list.forEach(function(x){
+    var k=x.mese+'-'+x.giorno;
+    if(!seen[k]){seen[k]=1;x.andata=true;x.ritorno=false;}
+    else{x.andata=false;x.ritorno=true;}
+  });
+  csvRows=list;csvRender();
+}
+function csvRender(){
+  var mesi={};csvRows.forEach(function(x){mesi[x.mese]=(mesi[x.mese]||0)+1;});
+  var keys=Object.keys(mesi).sort();
+  document.getElementById('csvInfo').innerHTML=
+    csvName+' &middot; '+csvRows.length+' righe di guida &middot; '+
+    keys.map(function(k){return mese2label(k)+' '+k.split('-')[0];}).join(', ')+
+    '<br>Tocca <b>Andata/Ritorno</b> per invertire la direzione. Le ore vengono ricalcolate da dalle/alle.';
+  var b=document.getElementById('csvBody'),h='';
+  if(keys.length>1||keys[0]!==curMese)
+    h+='<div class="csv-warn">Il CSV riguarda '+keys.map(function(k){return mese2label(k);}).join(' e ')+
+       ': i viaggi verranno inseriti nel mese corretto e la vista passer&agrave; a quel mese.</div>';
+  csvRows.forEach(function(x,i){
+    h+='<div class="crow'+(x._on?'':' off')+'" id="cr'+i+'">'+
+       '<input type="checkbox" '+(x._on?'checked':'')+' onchange="csvToggleOn('+i+',this.checked)">'+
+       '<div class="cg">'+x.giorno+'</div>'+
+       '<button type="button" class="cd '+(x.andata?'a':'')+'" onclick="csvFlip('+i+')">'+(x.andata?'Andata':'Ritorno')+'</button>'+
+       '<div class="ct">'+(x.dalle||'--:--')+' &rarr; '+(x.alle||'--:--')+'</div>'+
+       '<div class="co">'+(x.nore||'')+'</div>'+
+       '<div class="cx">'+[x.targa,x.dest].filter(Boolean).join(' &middot; ')+'</div>'+
+       '</div>';
+  });
+  b.innerHTML=h;
+  document.getElementById('csvSheet').classList.add('open');
+}
+function csvToggleOn(i,v){csvRows[i]._on=v;var el=document.getElementById('cr'+i);if(el)el.className='crow'+(v?'':' off');}
+function csvFlip(i){var x=csvRows[i];x.andata=!x.andata;x.ritorno=!x.andata;csvRender();}
+function csvClose(){document.getElementById('csvSheet').classList.remove('open');csvRows=[];}
+function csvApply(mode){
+  var sel=csvRows.filter(function(x){return x._on;});
+  if(!sel.length){toast('Nessuna riga selezionata','r');return;}
+  if(curMese)mesiData[curMese]=rows;
+  var groups={};
+  sel.forEach(function(x){(groups[x.mese]=groups[x.mese]||[]).push(x);});
+  var added=0,dup=0,target=null,best=0;
+  Object.keys(groups).forEach(function(m){
+    var arr=(mode==='replace')?[]:(mesiData[m]||[]).slice();
+    var nid=arr.length?arr.reduce(function(a,r){return Math.max(a,r.id);},-1)+1:0;
+    groups[m].forEach(function(x){
+      var exists=arr.some(function(r){
+        return String(r.giorno)===String(x.giorno)&&(r.dalle||'')===(x.dalle||'')&&(r.alle||'')===(x.alle||'');
+      });
+      if(exists){dup++;return;}
+      arr.push({id:nid++,andata:!!x.andata,ritorno:!!x.ritorno,giorno:String(x.giorno),
+        dalle:x.dalle,alle:x.alle,nore:calcH(x.dalle,x.alle),targa:x.targa,dest:x.dest});
+      added++;
+    });
+    arr.sort(function(a,b){
+      var da=parseInt(a.giorno||0,10),db=parseInt(b.giorno||0,10);
+      if(da!==db)return da-db;
+      return (a.dalle||'')<(b.dalle||'')?-1:1;
+    });
+    arr.forEach(function(r,i){r.id=i;});
+    mesiData[m]=arr;
+    if(groups[m].length>best){best=groups[m].length;target=m;}
+  });
+  curMese=target||curMese;
+  document.getElementById('mese').value=curMese;
+  rows=(mesiData[curMese]||[]).slice();
+  rc=rows.length?rows.reduce(function(a,r){return Math.max(a,r.id);},-1)+1:0;
+  renderRows();updTot();csvClose();sched();
+  toast(added+(added===1?' viaggio importato':' viaggi importati')+(dup?' · '+dup+' già presenti':''),'g');
+}
+
+function syncNow(){
+  if(!currentFile) return;
+  setDot('sync','Sincronizzazione...');
+  document.getElementById('btnSync').textContent='⟳';
+  loadModuleData('fogli').then(function(d){
+    if(d && !d.init){
+      applyData(d,true);
+      setDot('ok','Sincronizzato');
+      lastSaved=new Date();
+      updTime(lastSaved);
+      toast('Dati aggiornati dal cloud','g');
+    } else {
+      setDot('ok','Nessun dato nel cloud');
+      toast('Nessun dato da caricare','');
+    }
+    document.getElementById('btnSync').textContent='⟳ Sincronizza';
+  }).catch(function(){
+    setDot('err','Errore connessione');
+    toast('Impossibile connettersi al cloud','r');
+    document.getElementById('btnSync').textContent='⟳ Sincronizza';
+  });
+}
+
+requireAuth(afterAuth);
+</script>
+</body>
+</html>
