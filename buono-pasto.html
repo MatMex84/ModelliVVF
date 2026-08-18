@@ -93,7 +93,7 @@
 <script src="shared.js"></script>
 <script>
 var SEDI=['Sede Centrale','Distaccamento Bonea','Distaccamento Telese Terme','Distaccamento San Marco dei Cavoti','Altro'];
-var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null,sigDataUrl=null;
 
 function renderSedeList(){
   var sede=document.getElementById('sedeHidden')?document.getElementById('sedeHidden').value:'';
@@ -131,6 +131,7 @@ function doLogout(){
 function afterAuth(user){
   currentFile='u_'+user.uid;
   document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  loadSignature().then(function(u){sigDataUrl=u;});
   renderSedeList();
   showOv('Caricamento dati...');
   setDot('sync','Connessione...');
@@ -404,6 +405,10 @@ function makePDF(id){
   y+=22;
   doc.setFont('helvetica','italic');doc.setFontSize(11);
   doc.text('In fede',pw-mr-30,y,{align:'center'});y+=10;
+  if(sigDataUrl){
+    var sw=34,sh=sw*(460/1600);
+    try{doc.addImage(sigDataUrl,'PNG',pw-mr-30-sw/2,y-sh-1,sw,sh);}catch(e){}
+  }
   doc.setLineWidth(0.3);doc.line(pw-mr-64,y,pw-mr,y);
 
   var fn=(document.getElementById('nome').value||'dipendente').replace(/\s+/g,'_');

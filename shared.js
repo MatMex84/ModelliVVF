@@ -90,6 +90,46 @@ function mese2label(v){
 }
 function nowMese(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1);}
 
+/* ─── Firma digitale: immagine privata su Firestore ───
+   NON viene mai salvata nel repo (pubblico): risiede come stringa base64
+   in Firestore (collection "signatures", un documento per utente),
+   protetta dalle stesse security rules degli altri moduli. Niente
+   Firebase Storage: evita i problemi di CORS sui download diretti.
+   Cache in memoria + localStorage come backup offline. */
+var _sigCache = null;
+function loadSignature(){
+  if(_sigCache)return Promise.resolve(_sigCache);
+  if(!fbAuth.currentUser)return Promise.resolve(null);
+  var uid=fbAuth.currentUser.uid;
+  return fbDb.collection('signatures').doc(uid).get()
+    .then(function(s){
+      var url=(s.exists&&s.data().dataUrl)?s.data().dataUrl:null;
+      if(url){_sigCache=url;try{localStorage.setItem('vvf_sig_'+uid,url);}catch(e){}}
+      return url;
+    })
+    .catch(function(){
+      var bk=null;try{bk=localStorage.getItem('vvf_sig_'+uid);}catch(e){}
+      if(bk){_sigCache=bk;return bk;}
+      return null;
+    });
+}
+function uploadSignature(file){
+  if(!fbAuth.currentUser)return Promise.reject(new Error('not-authenticated'));
+  var uid=fbAuth.currentUser.uid;
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onloadend=function(){resolve(reader.result);};
+    reader.onerror=function(){reject(reader.error);};
+    reader.readAsDataURL(file);
+  }).then(function(dataUrl){
+    return fbDb.collection('signatures').doc(uid).set({dataUrl:dataUrl}).then(function(){
+      _sigCache=dataUrl;
+      try{localStorage.setItem('vvf_sig_'+uid,dataUrl);}catch(e){}
+      return dataUrl;
+    });
+  });
+}
+
 /* ─── Firestore: un documento per utente per modulo ─── */
 function moduleDocRef(collection){
   if(!fbAuth.currentUser)return null;

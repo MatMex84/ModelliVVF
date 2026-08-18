@@ -194,7 +194,7 @@
 <script src="shared.js"></script>
 <script>
 var PREFIX = 'VVF_BN_CMD_'; /* solo per recuperare il vecchio backup locale della app originale */
-var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null,sigDataUrl=null;
 var mesiData={},curMese='';
 
 function switchMese(newMese){
@@ -230,6 +230,7 @@ function doLogout(){
 function afterAuth(user){
   currentFile='u_'+user.uid;
   document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  loadSignature().then(function(u){sigDataUrl=u;});
   showOv('Caricamento dati...');
   setDot('sync','Connessione...');
   loadModuleData('fogli').then(function(d){
@@ -523,7 +524,15 @@ function makePDF(){
   doc.text('Benevento,',ml,y);
   doc.setDrawColor(0);doc.setLineWidth(0.3);doc.rect(ml+22,y-4,30,6,'S');
   doc.text(datad,ml+37,y,{align:'center'});
-  doc.text('Firma del dipendente',pw-mr-46,y);y+=20;
+  var capLbl='Firma del dipendente',capX=pw-mr-46;
+  if(sigDataUrl){
+    var sw=30,sh=sw*(460/1600);
+    try{doc.addImage(sigDataUrl,'PNG',capX+doc.getTextWidth(capLbl)/2-sw/2,y+1,sw,sh);}catch(e){}
+    doc.text(capLbl,capX,y+1+sh+4);
+  }else{
+    doc.text(capLbl,capX,y);
+  }
+  y+=20;
   doc.setDrawColor(0);doc.setLineWidth(0.5);doc.rect(ml,y,cw,36,'S');
   doc.setFontSize(9);doc.setFont('helvetica','bold');
   doc.text('Riservato Ufficio Ragioneria',pw/2,y+6,{align:'center'});

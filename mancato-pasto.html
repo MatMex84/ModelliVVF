@@ -59,7 +59,6 @@
       </div>
       <div class="frow">
         <div class="field"><label>Data documento</label><input type="text" id="dataDoc" placeholder="gg/mm/aaaa" oninput="sched()"></div>
-        <div class="field"><label>Capo Turno (visto)</label><input type="text" id="capoTurno" placeholder="Nome Capo Turno" oninput="sched()"></div>
       </div>
       <div class="frow" style="margin-bottom:0">
         <div class="field"><label>Nome Comandante</label><input type="text" id="comandante" placeholder="Ing. Salvatore Angelo CAPOLONGO" oninput="sched()"></div>
@@ -81,7 +80,7 @@
 
 <script src="shared.js"></script>
 <script>
-var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null,sigDataUrl=null;
 
 function doLogout(){
   if(!confirm('Uscire?'))return;
@@ -93,6 +92,7 @@ function doLogout(){
 function afterAuth(user){
   currentFile='u_'+user.uid;
   document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  loadSignature().then(function(u){sigDataUrl=u;});
   showOv('Caricamento dati...');
   setDot('sync','Connessione...');
   loadModuleData('mancatoPasto').then(function(d){
@@ -132,14 +132,12 @@ function getData(){
   return{
     nome:document.getElementById('nome').value,
     dataDoc:document.getElementById('dataDoc').value,
-    capoTurno:document.getElementById('capoTurno').value,
     comandante:document.getElementById('comandante').value,
     richieste:rows
   };
 }
 function applyData(d){
   document.getElementById('nome').value=d.nome||'';
-  document.getElementById('capoTurno').value=d.capoTurno||'';
   document.getElementById('comandante').value=d.comandante||'';
   setDate();
   rows=(d.richieste||[]).slice();
@@ -280,7 +278,6 @@ function makePDF(id){
   var pw=210,ml=22,mr=22,cw=pw-ml-mr;
   var nome=document.getElementById('nome').value||'________________________________';
   var datad=document.getElementById('dataDoc').value||oggiIt();
-  var capoTurno=document.getElementById('capoTurno').value||'';
   var cmd=document.getElementById('comandante').value||DEF_CMD;
 
   var y=20;
@@ -366,17 +363,17 @@ function makePDF(id){
   doc.setLineWidth(0.2);doc.line(ml+20,y+0.8,ml+50,y+0.8);
   doc.setFont('helvetica','normal');doc.text('FIRMA',pw-mr-30,y-4,{align:'center'});
   doc.setLineWidth(0.3);doc.line(pw-mr-64,y+0.8,pw-mr,y+0.8);
-  y+=24;
+  if(sigDataUrl){
+    var sw=30,sh=sw*(460/1600);
+    try{doc.addImage(sigDataUrl,'PNG',pw-mr-30-sw/2,y+2.8,sw,sh);}catch(e){}
+  }
+  y+=28;
 
-  doc.text('Visto: Il Capo Turno',ml,y);
-  doc.setFont('helvetica','bold');doc.text(capoTurno,ml,y+6);
-  doc.setLineWidth(0.2);doc.line(ml,y+7,ml+58,y+7);
-
-  doc.setFont('helvetica','normal');doc.text('Si autorizza',pw-mr-32,y-6,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Si autorizza',pw/2,y,{align:'center'});y+=7;
   doc.setFont('helvetica','bold');doc.setFontSize(10.5);
-  doc.text('IL COMANDANTE',pw-mr-32,y+2,{align:'center'});
+  doc.text('IL COMANDANTE',pw/2,y,{align:'center'});y+=6;
   doc.setFontSize(9.5);
-  doc.text(cmd,pw-mr-32,y+8,{align:'center',maxWidth:60});
+  doc.text(cmd,pw/2,y,{align:'center',maxWidth:80});
 
   var fn=(document.getElementById('nome').value||'dipendente').replace(/\s+/g,'_');
   doc.save('Mancato_Pasto_'+fn+'_'+(fmtDataIt(row.dataInt)||oggiIt()).replace(/\//g,'-')+'.pdf');
