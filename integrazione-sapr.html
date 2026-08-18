@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SAPR">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C0272D">
+<title>Integrazione Nucleo SAPR — VVF</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="shared.css">
+<style>
+.mese-bar{display:flex;gap:8px;margin-bottom:12px;align-items:stretch}
+.mese-nav{flex:0 0 44px;background:var(--card);border:none;border-radius:var(--radius);color:var(--red);font-size:19px;font-weight:800;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:center;padding:0}
+.mese-nav:active{background:var(--red-light)}
+.mese-pill{flex:1;background:var(--card);border-radius:var(--radius);padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);min-width:0}
+.mese-pill label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);display:block;margin-bottom:3px}
+.mese-pill input{border:none;background:none;font-size:15px;font-weight:700;color:var(--ink);width:100%;padding:0;-webkit-appearance:none;text-align:center}
+.mese-pill input:focus{outline:none}
+.ref-card{background:var(--card);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.ref-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:12px}
+.day-box{width:58px;flex-shrink:0}
+.day-box input{width:100%;padding:10px 4px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;font-weight:700;text-align:center;color:var(--ink);background:var(--bg);-webkit-appearance:none}
+.day-box input:focus{outline:none;border-color:var(--red);background:#fff}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="overlay hidden" id="overlay"><div class="spin"></div><div class="spintxt" id="spintxt">Caricamento...</div></div>
+
+<div class="topbar">
+  <div class="topbar-main">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-back" onclick="location.href='index.html'" aria-label="Torna alla dashboard">&#8249;</button>
+      <div>
+        <h1>Integrazione Nucleo SAPR</h1>
+        <div class="sub" id="userSub">VV.F. Benevento</div>
+      </div>
+    </div>
+    <button class="btn-exit" onclick="doLogout()">Esci</button>
+  </div>
+  <div class="statusline">
+    <div class="sdot" id="cdot"></div>
+    <span id="clbl">...</span>
+    <span class="stime" id="ctime"></span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Profilo collassabile -->
+  <div class="profile open" id="profileCard">
+    <div class="profile-head" onclick="toggleProfile()">
+      <div>
+        <div class="pname" id="profName">Dati dipendente</div>
+        <div class="pmeta" id="profMeta">Tocca per compilare</div>
+      </div>
+      <span class="chev">&#9662;</span>
+    </div>
+    <div class="profile-body">
+      <div class="frow">
+        <div class="field"><label>Qualifica</label><input type="text" id="qualifica" placeholder="VE" oninput="sched();updProfHead()"></div>
+        <div class="field" style="flex:2"><label>Cognome e Nome</label><input type="text" id="nome" placeholder="Messina Matteo" oninput="sched();updProfHead()"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Turno</label>
+          <select id="turno" onchange="sched();updProfHead()"><option value="">--</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        </div>
+        <div class="field"><label>Salto</label><input type="text" id="salto" placeholder="es. D4" oninput="sched()"></div>
+      </div>
+      <div class="frow" style="margin-bottom:0">
+        <div class="field"><label>Data documento</label><input type="text" id="dataDoc" placeholder="gg/mm/aaaa" oninput="sched()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mese -->
+  <div class="mese-bar">
+    <button class="mese-nav" type="button" onclick="stepMese(-1)" aria-label="Mese precedente">&#8249;</button>
+    <div class="mese-pill">
+      <label>Mese di riferimento</label>
+      <input type="month" id="mese" oninput="onMeseInput(this.value)" onchange="onMeseInput(this.value)" style="-webkit-appearance:none;appearance:none;font-size:16px;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);width:100%;background:#fff;color:var(--ink);text-align:center">
+    </div>
+    <button class="mese-nav" type="button" onclick="stepMese(1)" aria-label="Mese successivo">&#8250;</button>
+  </div>
+
+  <!-- Riferimenti amministrativi del mese -->
+  <div class="ref-card">
+    <div class="ref-title">Riferimenti del mese</div>
+    <div class="frow">
+      <div class="field"><label>N° nota Direzione Regionale</label><input type="text" id="notaNum" placeholder="es. 1234" oninput="sched()"></div>
+      <div class="field"><label>Data nota</label><input type="text" id="notaData" placeholder="gg/mm/aaaa" oninput="sched()"></div>
+    </div>
+    <div class="frow" style="margin-bottom:0">
+      <div class="field"><label>N° DDS Comando Provinciale</label><input type="text" id="ddsNum" placeholder="es. 271" oninput="sched()"></div>
+      <div class="field"><label>Data DDS</label><input type="text" id="ddsData" placeholder="gg/mm/aaaa" oninput="sched()"></div>
+    </div>
+  </div>
+
+  <!-- Righe -->
+  <div class="section-title">
+    <h2>Giornate</h2>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="section-count" id="rowsCount"></span>
+    </div>
+  </div>
+  <div id="rows"></div>
+  <button class="btn-add" onclick="addRow()">+ Aggiungi giornata</button>
+
+</div>
+
+<!-- Bottom bar -->
+<div class="bottombar">
+  <div class="bb-inner">
+    <div class="bb-tot">
+      <div class="v" id="totale">0</div>
+      <div class="l">ore totali</div>
+    </div>
+    <button class="bb-btn bb-save" onclick="saveNow()">&#9729; Salva</button>
+    <button class="bb-btn bb-pdf" onclick="makePDF()">&#128196; PDF</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+var rows=[],rc=0,saveTimer=null,lastSaved=null,currentFile=null;
+var mesiData={},curMese='';
+
+function switchMese(newMese){
+  if(!newMese||newMese===curMese)return;
+  if(curMese)saveMeseState();
+  curMese=newMese;
+  loadMeseState();
+  renderRows();updTot();
+}
+function saveMeseState(){
+  mesiData[curMese]={
+    notaNum:document.getElementById('notaNum').value,
+    notaData:document.getElementById('notaData').value,
+    ddsNum:document.getElementById('ddsNum').value,
+    ddsData:document.getElementById('ddsData').value,
+    rows:rows
+  };
+}
+function loadMeseState(){
+  var m=mesiData[curMese]||{};
+  document.getElementById('notaNum').value=m.notaNum||'';
+  document.getElementById('notaData').value=m.notaData||'';
+  document.getElementById('ddsNum').value=m.ddsNum||'';
+  document.getElementById('ddsData').value=m.ddsData||'';
+  rows=(m.rows||[]).slice();
+  rc=rows.length?rows.reduce(function(mx,r){return Math.max(mx,r.id);},-1)+1:0;
+}
+function onMeseInput(v){
+  if(!/^\d{4}-\d{2}$/.test(v))return;
+  switchMese(v);sched();
+}
+function stepMese(delta){
+  var cur=document.getElementById('mese').value||curMese||nowMese();
+  var p=cur.split('-');var y=parseInt(p[0],10),m=parseInt(p[1],10)-1+delta;
+  if(m<0){m=11;y--;}if(m>11){m=0;y++;}
+  var nv=y+'-'+pad2(m+1);
+  document.getElementById('mese').value=nv;
+  onMeseInput(nv);
+}
+
+function doLogout(){
+  if(!confirm('Uscire?'))return;
+  fbAuth.signOut().catch(function(){});
+  clearCreds();
+  window.location.href='index.html';
+}
+
+function afterAuth(user){
+  currentFile='u_'+user.uid;
+  document.getElementById('userSub').textContent=slugify(user.email||'').replace(/\./g,' ');
+  showOv('Caricamento dati...');
+  setDot('sync','Connessione...');
+  loadModuleData('integrazioneSapr').then(function(d){
+    if(d&&!d.init){applyData(d);setDot('ok','Sincronizzato');lastSaved=new Date();updTime(lastSaved);}
+    else{setDot('ok','Pronto');initEmptyMese();document.getElementById('profileCard').classList.add('open');addRow();}
+    hideOv();
+  }).catch(function(){
+    setDot('err','Offline — dati locali');
+    var bk=localStorage.getItem('vvf_bk_sapr_'+currentFile);
+    if(bk){try{applyData(JSON.parse(bk));}catch(e){initEmptyMese();addRow();}}
+    else{initEmptyMese();addRow();}
+    hideOv();
+  });
+}
+
+function sched(){setDot('sync','Modificato...');clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,2000);}
+function saveNow(){
+  clearTimeout(saveTimer);
+  if(!fbAuth.currentUser){setDot('err','Non connesso');return;}
+  setDot('sync','Salvataggio...');
+  var d=getData();
+  localStorage.setItem('vvf_bk_sapr_'+currentFile,JSON.stringify(d));
+  saveModuleData('integrazioneSapr',d).then(function(){lastSaved=new Date();setDot('ok','Salvato');updTime(lastSaved);})
+  .catch(function(){setDot('err','Offline — backup locale');});
+}
+
+function initEmptyMese(){
+  mesiData={};curMese=nowMese();
+  document.getElementById('mese').value=curMese;
+  rows=[];rc=0;
+  document.getElementById('notaNum').value='';
+  document.getElementById('notaData').value='';
+  document.getElementById('ddsNum').value='';
+  document.getElementById('ddsData').value='';
+}
+
+function setDate(){document.getElementById('dataDoc').value=oggiIt();}
+
+function toggleProfile(){document.getElementById('profileCard').classList.toggle('open');}
+function updProfHead(){
+  var n=document.getElementById('nome').value;
+  var q=document.getElementById('qualifica').value;
+  var t=document.getElementById('turno').value;
+  document.getElementById('profName').textContent=n||'Dati dipendente';
+  var meta=[];if(q)meta.push(q);if(t)meta.push('Turno '+t);
+  document.getElementById('profMeta').textContent=meta.length?meta.join(' · '):'Tocca per compilare';
+}
+
+function getData(){
+  saveMeseState();
+  return{
+    qualifica:document.getElementById('qualifica').value,
+    nome:document.getElementById('nome').value,
+    turno:document.getElementById('turno').value,
+    salto:document.getElementById('salto').value,
+    dataDoc:document.getElementById('dataDoc').value,
+    mese:curMese,
+    mesi:mesiData
+  };
+}
+function applyData(d,keepView){
+  document.getElementById('qualifica').value=d.qualifica||'';
+  document.getElementById('nome').value=d.nome||'';
+  document.getElementById('turno').value=d.turno||'';
+  document.getElementById('salto').value=d.salto||'';
+  setDate();
+  mesiData=d.mesi||{};
+  curMese=(keepView&&curMese)?curMese:(d.mese||nowMese());
+  document.getElementById('mese').value=curMese;
+  loadMeseState();
+  renderRows();updTot();updProfHead();
+  if(d.nome) document.getElementById('profileCard').classList.remove('open');
+  else document.getElementById('profileCard').classList.add('open');
+}
+
+function addRow(){
+  rows.push({id:rc++,data:'',orarioTurno:'LIBERO',orarioEffettuato:'',differenza:'+12',note:''});
+  renderRows();updTot();sched();
+  setTimeout(function(){var cards=document.querySelectorAll('.item-card');if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+function delRow(id){
+  rows=rows.filter(function(r){return r.id!==id;});
+  renderRows();updTot();sched();
+}
+function upd(id,f,v){
+  var row=rows.find(function(r){return r.id===id;});if(!row)return;
+  row[f]=v;updTot();sched();
+}
+
+function parseDiff(s){
+  var m=/^\s*([+-]?\d+)/.exec(String(s||''));
+  return m?parseInt(m[1],10):0;
+}
+function updTot(){
+  var t=0;
+  rows.forEach(function(r){if(r.data||r.orarioEffettuato||r.differenza)t+=parseDiff(r.differenza);});
+  var s=(t>0?'+':'')+t;
+  document.getElementById('totale').textContent=s;return s;
+}
+
+function renderRows(){
+  var c=document.getElementById('rows');c.innerHTML='';
+  document.getElementById('rowsCount').textContent=rows.length?rows.length+(rows.length===1?' giornata':' giornate'):'';
+  if(!rows.length){
+    var em=document.createElement('div');em.className='empty';
+    em.innerHTML='<div class="ic">&#128643;</div><p>Nessuna giornata inserita.<br>Tocca "+ Aggiungi giornata" per iniziare.</p>';
+    c.appendChild(em);return;
+  }
+  rows.forEach(function(row){
+    var card=document.createElement('div');card.className='item-card';
+
+    var top=document.createElement('div');top.className='item-top';top.style.marginBottom='12px';
+    var fd=document.createElement('div');fd.className='field';fd.style.flex='1';
+    var ld=document.createElement('label');ld.textContent='Data';
+    var idt=document.createElement('input');idt.type='date';idt.value=row.data||'';
+    idt.addEventListener('input',function(){upd(row.id,'data',idt.value);});
+    fd.appendChild(ld);fd.appendChild(idt);top.appendChild(fd);
+    var tr=document.createElement('button');tr.className='btn-trash';tr.type='button';tr.setAttribute('aria-label','Elimina giornata');tr.textContent='✕';tr.style.marginTop='18px';
+    (function(rid){tr.addEventListener('click',function(){delRow(rid);});})(row.id);
+    top.appendChild(tr);
+    card.appendChild(top);
+
+    var r1=document.createElement('div');r1.className='frow';
+    var f1=document.createElement('div');f1.className='field';
+    var l1=document.createElement('label');l1.textContent='Orario in turno';
+    var i1=document.createElement('input');i1.type='text';i1.placeholder='LIBERO';i1.value=row.orarioTurno||'';
+    i1.addEventListener('input',function(){upd(row.id,'orarioTurno',i1.value);});
+    f1.appendChild(l1);f1.appendChild(i1);r1.appendChild(f1);
+    var f2=document.createElement('div');f2.className='field';
+    var l2=document.createElement('label');l2.textContent='Orario effettuato';
+    var i2=document.createElement('input');i2.type='text';i2.placeholder='es. 8-20';i2.value=row.orarioEffettuato||'';
+    i2.addEventListener('input',function(){upd(row.id,'orarioEffettuato',i2.value);});
+    f2.appendChild(l2);f2.appendChild(i2);r1.appendChild(f2);
+    card.appendChild(r1);
+
+    var r2=document.createElement('div');r2.className='frow';
+    var f3=document.createElement('div');f3.className='field';f3.style.flex='0 0 100px';
+    var l3=document.createElement('label');l3.textContent='Differenza';
+    var i3=document.createElement('input');i3.type='text';i3.placeholder='+12';i3.value=row.differenza||'';
+    i3.addEventListener('input',function(){upd(row.id,'differenza',i3.value);});
+    f3.appendChild(l3);f3.appendChild(i3);r2.appendChild(f3);
+    var f4=document.createElement('div');f4.className='field';
+    var l4=document.createElement('label');l4.textContent='Note';
+    var i4=document.createElement('input');i4.type='text';i4.placeholder='es. DDS n.271 del 04.12.2025';i4.value=row.note||'';
+    i4.addEventListener('input',function(){upd(row.id,'note',i4.value);});
+    f4.appendChild(l4);f4.appendChild(i4);r2.appendChild(f4);
+    card.appendChild(r2);
+
+    c.appendChild(card);
+  });
+}
+
+function fmtDataIt(v){
+  if(!v)return'';
+  var p=v.split('-');if(p.length!==3)return v;
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+
+function makePDF(){
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ml=20,mr=20,cw=pw-ml-mr;
+  var qual=document.getElementById('qualifica').value||'';
+  var nome=document.getElementById('nome').value||'________________________';
+  var qn=(qual?qual+' ':'')+nome;
+  var meseL=mese2label(document.getElementById('mese').value);
+  var anno=(document.getElementById('mese').value||'').split('-')[0]||'';
+  var meseAnno=(meseL&&anno)?(meseL+' '+anno):'_____________';
+  var datad=document.getElementById('dataDoc').value||oggiIt();
+  var notaNum=document.getElementById('notaNum').value||'___';
+  var notaData=fmtDataIt(document.getElementById('notaData').value)||'__________';
+  var ddsNum=document.getElementById('ddsNum').value||'___';
+  var ddsData=fmtDataIt(document.getElementById('ddsData').value)||'__________';
+  var tot=updTot();
+
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);
+  doc.text('Al Comando Vigili del Fuoco Benevento',pw-mr,15,{align:'right'});
+  doc.text('Ufficio T.E.P.',pw-mr,20,{align:'right'});
+  var y=28;
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.line(ml,y,pw-mr,y);y+=7;
+  doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('OGGETTO: Richiesta per la corresponsione per potenziamento turni di',ml,y);y+=5;
+  doc.text('servizio – Mese di '+meseAnno+'.',ml,y);y+=10;
+
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  var body="Per il potenziamento del servizio per il personale OPERATORE S.A.P.R, in riferimento alla nota nr. "+notaNum+" datata "+notaData+" della Direzione Regionale - Area Soccorso Aereo - Ufficio Nucleo S.A.P.R. per il mese di "+meseAnno+" e dds del comando provinciale VVF di Benevento n. "+ddsNum+" del "+ddsData+", si richiede la corresponsione dell'indennità di straordinario per ore totali "+tot+" secondo il seguente prospetto:";
+  var bodyLines=doc.splitTextToSize(body,cw);
+  bodyLines.forEach(function(ln){doc.text(ln,ml,y);y+=5;});
+  y+=6;
+
+  var cols=[22,32,32,20,cw-106];
+  var heads=['Data','Orario in Turno','Orario effettuato','Differenza','Note'];
+  var rh=7;
+  doc.setFillColor(230,230,230);doc.rect(ml,y,cw,rh,'F');
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.rect(ml,y,cw,rh,'S');
+  var vcx=ml;for(var vi=0;vi<cols.length-1;vi++){vcx+=cols[vi];doc.line(vcx,y,vcx,y+rh);}
+  doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(0);
+  var cx=ml;heads.forEach(function(h,i){doc.text(h,cx+cols[i]/2,y+rh/2+1,{align:'center'});cx+=cols[i];});y+=rh;
+
+  var drows=rows.filter(function(r){return r.data||r.orarioEffettuato||r.differenza||r.note;});
+  var noteLh=3.6;
+  drows.forEach(function(row){
+    var noteLines=doc.splitTextToSize(row.note||'',cols[4]-3);
+    var rowH=Math.max(rh,noteLines.length*noteLh+3);
+    doc.setFillColor(255,255,255);doc.rect(ml,y,cw,rowH,'F');
+    doc.setDrawColor(0);doc.setLineWidth(0.2);doc.rect(ml,y,cw,rowH,'S');
+    var vx=ml;for(var vj=0;vj<cols.length-1;vj++){vx+=cols[vj];doc.line(vx,y,vx,y+rowH);}
+    cx=ml;
+    [fmtDataIt(row.data)||'',row.orarioTurno||'',row.orarioEffettuato||'',row.differenza||'']
+    .forEach(function(cell,i){
+      doc.setFont('helvetica',i===3&&cell?'bold':'normal');doc.setFontSize(7.5);doc.setTextColor(0);
+      doc.text(cell,cx+cols[i]/2,y+rowH/2+1,{align:'center',maxWidth:cols[i]-2});
+      cx+=cols[i];
+    });
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(0);
+    var noteY=y+4;
+    noteLines.forEach(function(ln){doc.text(ln,cx+2,noteY);noteY+=noteLh;});
+    y+=rowH;
+  });
+  for(var e2=0;e2<Math.max(0,8-drows.length);e2++){
+    doc.setFillColor(255,255,255);doc.rect(ml,y,cw,rh,'F');doc.setDrawColor(0);doc.setLineWidth(0.2);doc.rect(ml,y,cw,rh,'S');
+    var vx2=ml;for(var vk=0;vk<cols.length-1;vk++){vx2+=cols[vk];doc.line(vx2,y,vx2,y+rh);}
+    y+=rh;
+  }
+  y+=6;
+  doc.setFillColor(240,240,240);doc.rect(ml,y,cw,rh,'F');doc.setDrawColor(0);doc.setLineWidth(0.3);doc.rect(ml,y,cw,rh,'S');
+  var totLbl=cols[0]+cols[1]+cols[2];
+  doc.line(ml+totLbl,y,ml+totLbl,y+rh);
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);
+  doc.text('TOTALE',ml+totLbl/2,y+rh/2+1,{align:'center'});
+  doc.text(tot,ml+totLbl+cols[3]/2,y+rh/2+1,{align:'center'});
+  y+=rh+14;
+
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(0);
+  doc.text('Benevento,',ml,y);
+  doc.setFont('helvetica','bold');doc.text(datad,ml+18,y);
+  doc.setLineWidth(0.2);doc.line(ml+18,y+0.8,ml+48,y+0.8);
+  doc.setFont('helvetica','normal');doc.text('In fede',pw-mr-30,y-6,{align:'center'});
+  doc.setFont('helvetica','bold');doc.text(qn,pw-mr-30,y+2,{align:'center',maxWidth:60});
+  y+=26;
+
+  doc.setDrawColor(0);doc.setLineWidth(0.5);doc.rect(ml,y,cw,20,'S');
+  doc.setFontSize(9);doc.setFont('helvetica','bold');
+  doc.text('Visto Ufficio Ragioneria',pw/2,y+12,{align:'center'});
+
+  var fn=(nome||'dipendente').replace(/\s+/g,'_');
+  doc.save('Integrazione_SAPR_'+fn+'_'+(meseAnno||oggiIt()).replace(/\s+/g,'_')+'.pdf');
+  toast('PDF generato','g');
+}
+
+requireAuth(afterAuth);
+</script>
+</body>
+</html>
