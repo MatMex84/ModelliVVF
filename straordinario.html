@@ -526,9 +526,9 @@ function makePDF(){
   doc.text(datad,ml+37,y,{align:'center'});
   var capLbl='Firma del dipendente',capX=pw-mr-46;
   if(sigDataUrl){
-    var sw=30,sh=sw*(460/1600);
-    try{doc.addImage(sigDataUrl,'PNG',capX+doc.getTextWidth(capLbl)/2-sw/2,y+1,sw,sh);}catch(e){}
-    doc.text(capLbl,capX,y+1+sh+4);
+    var dim=fitImageBox(doc,sigDataUrl,30,10);
+    try{doc.addImage(sigDataUrl,'PNG',capX+doc.getTextWidth(capLbl)/2-dim.w/2,y+1,dim.w,dim.h);}catch(e){}
+    doc.text(capLbl,capX,y+1+dim.h+4);
   }else{
     doc.text(capLbl,capX,y);
   }

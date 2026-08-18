@@ -424,8 +424,8 @@ function makePDF(){
   doc.setLineWidth(0.2);doc.line(ml+18,y+0.8,ml+48,y+0.8);
   doc.setFont('helvetica','normal');doc.text('In fede',pw-mr-30,y-10,{align:'center'});
   if(sigDataUrl){
-    var sw=30,sh=sw*(460/1600);
-    try{doc.addImage(sigDataUrl,'PNG',pw-mr-30-sw/2,y-8,sw,sh);}catch(e){}
+    var dim=fitImageBox(doc,sigDataUrl,30,9);
+    try{doc.addImage(sigDataUrl,'PNG',pw-mr-30-dim.w/2,y-8,dim.w,dim.h);}catch(e){}
   }
   doc.setFont('helvetica','bold');doc.text(qn,pw-mr-30,y+7,{align:'center',maxWidth:60});
   y+=26;

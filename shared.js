@@ -90,6 +90,19 @@ function mese2label(v){
 }
 function nowMese(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1);}
 
+/* Calcola le dimensioni (mm) per disegnare un'immagine mantenendo le
+   proporzioni reali, contenuta in un riquadro massimo maxW x maxH. */
+function fitImageBox(doc,dataUrl,maxW,maxH){
+  var w=maxW,h=maxH;
+  try{
+    var p=doc.getImageProperties(dataUrl);
+    var ratio=p.height/p.width;
+    w=maxW;h=maxW*ratio;
+    if(h>maxH){h=maxH;w=maxH/ratio;}
+  }catch(e){}
+  return{w:w,h:h};
+}
+
 /* ─── Firma digitale: immagine privata su Firestore ───
    NON viene mai salvata nel repo (pubblico): risiede come stringa base64
    in Firestore (collection "signatures", un documento per utente),
