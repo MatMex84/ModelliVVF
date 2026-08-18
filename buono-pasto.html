@@ -194,7 +194,7 @@ function applyData(d){
 }
 
 function addRow(){
-  rows.push({id:rc++,data:'',luogo:'',dalle:'',alle:'',attivita:'',targa:'',km:''});
+  rows.push({id:rc++,data:'',luogo:'',dalle:'',alle:'',attivita:'',targa:'',km:'',qty:1});
   renderRows();sched();
   setTimeout(function(){var cards=document.querySelectorAll('.item-card');if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'nearest'});},100);
 }
@@ -228,6 +228,18 @@ function renderRows(){
     (function(rid){tr.addEventListener('click',function(){delRow(rid);});})(row.id);
     top.appendChild(tr);
     card.appendChild(top);
+
+    var rq=document.createElement('div');rq.className='frow';
+    var fq=document.createElement('div');fq.className='field';
+    var lq=document.createElement('label');lq.textContent='N° Buoni Pasto';
+    var sq=document.createElement('div');sq.className='dir-seg';
+    [1,2].forEach(function(n){
+      var bq=document.createElement('button');bq.type='button';bq.className='dir-btn'+((row.qty||1)===n?' on':'');bq.textContent=n;
+      bq.addEventListener('click',function(){upd(row.id,'qty',n);renderRows();});
+      sq.appendChild(bq);
+    });
+    fq.appendChild(lq);fq.appendChild(sq);rq.appendChild(fq);
+    card.appendChild(rq);
 
     var r1=document.createElement('div');r1.className='frow';
     var fl=document.createElement('div');fl.className='field';
@@ -328,7 +340,17 @@ function makePDF(id){
   });
   y+=3;
 
-  doc.text('chiede il riconoscimento di un Buono Pasto Elettronico poiché in missione',ml,y,{maxWidth:cw});
+  var qty=row.qty||1;
+  doc.setFont('helvetica','normal');
+  var qPre='chiede il riconoscimento di';
+  doc.text(qPre,ml,y);
+  var qx=ml+doc.getTextWidth(qPre)+3;
+  doc.setFont('helvetica','bold');
+  doc.text(String(qty),qx,y);
+  var qw=doc.getTextWidth(String(qty));
+  doc.setFont('helvetica','normal');
+  var qSuf=' '+(qty===1?'Buono Pasto Elettronico':'Buoni Pasto Elettronici')+' poiché in missione';
+  doc.text(qSuf,qx+qw,y);
   y+=9;
 
   doc.text('in data',ml,y);
