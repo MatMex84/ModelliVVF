@@ -361,12 +361,12 @@ function makePDF(id){
   doc.text('Benevento,',ml,y);
   doc.setFont('helvetica','bold');doc.text(datad,ml+20,y);
   doc.setLineWidth(0.2);doc.line(ml+20,y+0.8,ml+50,y+0.8);
-  doc.setFont('helvetica','normal');doc.text('FIRMA',pw-mr-30,y-14,{align:'center'});
-  if(sigDataUrl){
-    var dim=fitImageBox(doc,sigDataUrl,30,10);
-    try{doc.addImage(sigDataUrl,'PNG',pw-mr-30-dim.w/2,y-1-dim.h,dim.w,dim.h);}catch(e){}
-  }
   doc.setLineWidth(0.3);doc.line(pw-mr-64,y+0.8,pw-mr,y+0.8);
+  if(sigDataUrl){
+    var dim=fitImageBox(doc,sigDataUrl,40,15);
+    try{doc.addImage(sigDataUrl,'PNG',pw-mr-30-dim.w/2,y-0.7-dim.h,dim.w,dim.h);}catch(e){}
+  }
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('FIRMA',pw-mr-30,y+5,{align:'center'});
   y+=28;
 
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Si autorizza',pw/2,y,{align:'center'});y+=7;
